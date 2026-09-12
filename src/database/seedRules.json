@@ -1,0 +1,100 @@
+[
+  {
+    "id": "SYS_RULE_001",
+    "antecedents": [
+      { "fact": "fever", "operator": "EQUALS", "value": true },
+      { "fact": "shortness_of_breath", "operator": "EQUALS", "value": true }
+    ],
+    "consequent": { "fact": "severe_respiratory_risk", "value": true },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "triageAdvice": "Seek emergency care immediately. Call emergency services or go to the nearest ER.",
+      "description": "Fever combined with shortness of breath may indicate a severe respiratory condition such as pneumonia or a pulmonary embolism."
+    }
+  },
+  {
+    "id": "SYS_RULE_002",
+    "antecedents": [
+      { "fact": "fever", "operator": "EQUALS", "value": true },
+      { "fact": "cough", "operator": "EQUALS", "value": true }
+    ],
+    "consequent": { "fact": "possible_respiratory_infection", "value": true },
+    "metadata": {
+      "priority": 70,
+      "riskCategory": "Amber",
+      "triageAdvice": "Monitor symptoms closely. If fever exceeds 39°C or symptoms worsen, consult a doctor within 24 hours.",
+      "description": "Fever with cough is a common presentation of respiratory infections such as influenza or COVID-19."
+    }
+  },
+  {
+    "id": "SYS_RULE_003",
+    "antecedents": [
+      { "fact": "possible_respiratory_infection", "operator": "EQUALS", "value": true },
+      { "fact": "shortness_of_breath", "operator": "EQUALS", "value": true }
+    ],
+    "consequent": { "fact": "severe_respiratory_risk", "value": true },
+    "metadata": {
+      "priority": 90,
+      "riskCategory": "Red",
+      "triageAdvice": "Seek emergency care immediately. Respiratory infection with breathing difficulty requires urgent assessment.",
+      "description": "A respiratory infection that progresses to shortness of breath is a high-risk escalation pattern."
+    }
+  },
+  {
+    "id": "SYS_RULE_004",
+    "antecedents": [
+      { "fact": "headache", "operator": "EQUALS", "value": true },
+      { "fact": "fever", "operator": "NOT_EQUALS", "value": true },
+      { "fact": "stiff_neck", "operator": "NOT_EQUALS", "value": true }
+    ],
+    "consequent": { "fact": "mild_headache_likely", "value": true },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "triageAdvice": "Rest, stay hydrated, and take over-the-counter pain relief if needed. See a doctor if headache persists beyond 48 hours.",
+      "description": "A headache without fever or neck stiffness is likely a tension-type or dehydration headache with no urgent concern."
+    }
+  },
+  {
+    "id": "SYS_RULE_005",
+    "antecedents": [
+      { "fact": "headache", "operator": "EQUALS", "value": true },
+      { "fact": "stiff_neck", "operator": "EQUALS", "value": true },
+      { "fact": "fever", "operator": "EQUALS", "value": true }
+    ],
+    "consequent": { "fact": "possible_meningitis", "value": true },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "triageAdvice": "Seek emergency care immediately. This combination of symptoms may indicate meningitis.",
+      "description": "The triad of headache, stiff neck, and fever is a classic presentation of bacterial meningitis — a medical emergency."
+    }
+  },
+  {
+    "id": "SYS_RULE_006",
+    "antecedents": [
+      { "fact": "severe_respiratory_risk", "operator": "EQUALS", "value": true }
+    ],
+    "consequent": { "fact": "refer_to_emergency", "value": true },
+    "metadata": {
+      "priority": 110,
+      "riskCategory": "Red",
+      "triageAdvice": "You have been flagged for emergency referral. Please call 999 or go to the nearest emergency department.",
+      "description": "Any patient flagged with a severe respiratory risk must be referred to emergency services."
+    }
+  },
+  {
+    "id": "SYS_RULE_007",
+    "antecedents": [
+      { "fact": "possible_meningitis", "operator": "EQUALS", "value": true }
+    ],
+    "consequent": { "fact": "refer_to_emergency", "value": true },
+    "metadata": {
+      "priority": 110,
+      "riskCategory": "Red",
+      "triageAdvice": "You have been flagged for emergency referral. Please call 999 or go to the nearest emergency department.",
+      "description": "Any patient flagged with possible meningitis must be referred to emergency services immediately."
+    }
+  }
+]
