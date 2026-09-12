@@ -22,7 +22,8 @@ async function getDb(): Promise<SQLite.SQLiteDatabase> {
 const CREATE_SYSTEM_RULES_TABLE = `
   CREATE TABLE IF NOT EXISTS system_rules (
     id          TEXT PRIMARY KEY NOT NULL,
-    rule_json   TEXT NOT NULL
+    rule_json   TEXT NOT NULL,
+    is_active   INTEGER NOT NULL DEFAULT 1
   );
 `;
 
@@ -30,6 +31,7 @@ const CREATE_CUSTOM_RULES_TABLE = `
   CREATE TABLE IF NOT EXISTS custom_rules (
     id          TEXT PRIMARY KEY NOT NULL,
     rule_json   TEXT NOT NULL,
+    is_enabled  INTEGER NOT NULL DEFAULT 1,
     created_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
   );
 `;
@@ -131,9 +133,99 @@ export async function getSystemRules(): Promise<Rule[]> {
   return rows.map(row => JSON.parse(row.rule_json) as Rule);
 }
 
+/**
+ * Returns custom rules with their enabled state for admin UI.
+ */
+export async function getCustomRulesAdmin(): Promise<{ rule: Rule; isEnabled: boolean }[]> {
+  const database = await getDb();
+  const rows = await database.getAllAsync<{ rule_json: string; is_enabled: number }>(
+    'SELECT rule_json, is_enabled FROM custom_rules ORDER BY created_at ASC'
+  );
+  return rows.map(row => ({
+    rule: JSON.parse(row.rule_json) as Rule,
+    isEnabled: row.is_enabled === 1,
+  }));
+}
+
+/**
+ * Loads the unified rule set for the inference engine.
+ *
+ * Merges:
+ *   - Active system rules   (`is_active = 1` in `system_rules`)
+ *   - Enabled custom rules  (`is_enabled = 1` in `custom_rules`)
+ *
+ * Rules are ordered: system rules first (insertion order), then custom
+ * rules ordered by `created_at` ascending. Priority-based resolution
+ * inside the inference engine handles the actual execution order.
+ *
+ * @returns A single `Rule[]` ready to be passed to `new InferenceEngine(rules)`.
+ */
+export async function loadUnifiedRules(): Promise<Rule[]> {
+  const database = await getDb();
+
+  // Fetch only active system rules.
+  const systemRows = await database.getAllAsync<{ rule_json: string }>(
+    'SELECT rule_json FROM system_rules WHERE is_active = 1'
+  );
+
+  // Fetch only enabled custom rules, ordered by creation time.
+  const customRows = await database.getAllAsync<{ rule_json: string }>(
+    'SELECT rule_json FROM custom_rules WHERE is_enabled = 1 ORDER BY created_at ASC'
+  );
+
+  const parseRows = (rows: { rule_json: string }[]): Rule[] =>
+    rows.map(row => JSON.parse(row.rule_json) as Rule);
+
+  // Merge into a single in-memory array.
+  const unified: Rule[] = [
+    ...parseRows(systemRows),
+    ...parseRows(customRows),
+  ];
+
+  console.log(
+    `[DatabaseService] loadUnifiedRules: ${systemRows.length} system + ` +
+    `${customRows.length} custom = ${unified.length} total rule(s).`
+  );
+
+  return unified;
+}
+
+// ---------------------------------------------------------------------------
+// Toggle helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Activates or deactivates a system rule without deleting it.
+ * @param id       The rule ID to toggle.
+ * @param isActive `true` to activate, `false` to deactivate.
+ */
+export async function setSystemRuleActive(id: string, isActive: boolean): Promise<void> {
+  const database = await getDb();
+  await database.runAsync(
+    'UPDATE system_rules SET is_active = ? WHERE id = ?',
+    isActive ? 1 : 0,
+    id
+  );
+}
+
+/**
+ * Enables or disables a custom rule without deleting it.
+ * @param id        The rule ID to toggle.
+ * @param isEnabled `true` to enable, `false` to disable.
+ */
+export async function setCustomRuleEnabled(id: string, isEnabled: boolean): Promise<void> {
+  const database = await getDb();
+  await database.runAsync(
+    'UPDATE custom_rules SET is_enabled = ? WHERE id = ?',
+    isEnabled ? 1 : 0,
+    id
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Custom rules CRUD
 // ---------------------------------------------------------------------------
+
 
 /**
  * Inserts a new admin-created rule into `custom_rules`.
@@ -182,3 +274,4 @@ export async function closeDatabase(): Promise<void> {
     db = null;
   }
 }
+

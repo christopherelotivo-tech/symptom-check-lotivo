@@ -91,3 +91,20 @@ export type AuditTrailEntry =
   | RuleFiredAuditEntry
   | FactDerivedAuditEntry;
 
+// --- UI Output Structures ---
+
+/**
+ * The structured result of a full inference engine evaluation pass.
+ * Derived by the parent screen from the engine's audit trail and the
+ * highest-priority fired rule — ready for direct consumption by TriageCard.
+ */
+export interface TriageResult {
+  /** The highest-priority risk level raised during this evaluation. */
+  riskCategory: 'Green' | 'Amber' | 'Red';
+  /** Primary clinical advice to display to the user. */
+  triageAdvice: string;
+  /** Human-readable description of the triggered condition. */
+  description: string;
+  /** Ordered list of rule IDs that fired, for audit display. */
+  firedRuleIds: string[];
+}

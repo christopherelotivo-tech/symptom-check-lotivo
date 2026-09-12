@@ -6,11 +6,13 @@ module.exports = {
   testMatch: ['<rootDir>/src/**/__tests__/**/*.test.ts'],
   // Map module imports using the same paths as tsconfig
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+  // Redirect native Expo modules to manual mocks so Jest never touches real ESM.
+  moduleNameMapper: {
+    '^expo-sqlite$': '<rootDir>/src/__mocks__/expo-sqlite.ts',
+  },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: {
-        // Use a relaxed config for tests — strict mode is still on but
-        // we don't need Expo-specific compiler options here
         jsx: 'react',
         esModuleInterop: true,
       },

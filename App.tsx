@@ -1,20 +1,19 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import UserAssessmentScreen from './src/screens/UserAssessmentScreen';
+import AdminScreen from './src/screens/AdminScreen';
 
 export default function App() {
+  const [currentMode, setCurrentMode] = useState<'USER' | 'ADMIN'>('USER');
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar style="dark" />
+      {currentMode === 'USER' ? (
+        <UserAssessmentScreen onSwitchToAdmin={() => setCurrentMode('ADMIN')} />
+      ) : (
+        <AdminScreen onSwitchToUser={() => setCurrentMode('USER')} />
+      )}
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
