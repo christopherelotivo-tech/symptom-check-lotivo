@@ -37,8 +37,8 @@ describe('InferenceEngine Performance', () => {
     const engine = new InferenceEngine(rules);
     
     const initialMemory: WorkingMemory = {
-      start_fact: true,
-      dummy_fact: false, // Ensures the NOT_EQUALS condition passes
+      start_fact: { value: true, weight: 0 },
+      dummy_fact: { value: false, weight: 0 },
     };
 
     // Warm-up pass to let V8 JIT compile the hot paths
@@ -53,7 +53,7 @@ describe('InferenceEngine Performance', () => {
     
     // Assertions
     // Ensure all rules fired by verifying the last fact in the chain was derived
-    expect(result.memory[`fact_${NUM_RULES - 1}`]).toBe(true);
+    expect(result.memory[`fact_${NUM_RULES - 1}`]?.value).toBe(true);
     
     // Validate performance constraint (< 15ms)
     // We log the duration so developers can see the actual timing in Jest output

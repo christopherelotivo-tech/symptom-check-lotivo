@@ -1,8 +1,8 @@
 /**
  * WorkingMemory represents the current state of known facts.
- * For this symptom evaluation system, facts are boolean flags (e.g., 'has_fever': true).
+ * It stores whether a fact is present, and its mathematical severity weight (0.0 to 1.0).
  */
-export type WorkingMemory = Record<string, boolean>;
+export type WorkingMemory = Record<string, { value: boolean; weight: number }>;
 
 /**
  * Represents an operator used to evaluate a fact against a value.
@@ -48,7 +48,7 @@ export interface Rule {
 
 // --- Audit Trail Structures ---
 
-export type AuditEntryType = 'USER_INPUT' | 'RULE_FIRED' | 'FACT_DERIVED';
+export type AuditEntryType = 'USER_INPUT' | 'RULE_FIRED' | 'FACT_DERIVED' | 'AGGREGATE_SEVERITY_OVERRIDE';
 
 export interface BaseAuditEntry {
   id: string;
@@ -84,12 +84,23 @@ export interface FactDerivedAuditEntry extends BaseAuditEntry {
 }
 
 /**
+ * Tracks when the system overrides the risk level because the total weight of symptoms was too high.
+ */
+export interface AggregateSeverityAuditEntry extends BaseAuditEntry {
+  type: 'AGGREGATE_SEVERITY_OVERRIDE';
+  aggregateScore: number;
+  thresholdCrossed: number;
+  newRiskCategory: 'Green' | 'Amber' | 'Red';
+}
+
+/**
  * An entry in the evaluation engine's audit trail.
  */
 export type AuditTrailEntry =
   | UserInputAuditEntry
   | RuleFiredAuditEntry
-  | FactDerivedAuditEntry;
+  | FactDerivedAuditEntry
+  | AggregateSeverityAuditEntry;
 
 // --- UI Output Structures ---
 

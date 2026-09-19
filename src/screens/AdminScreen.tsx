@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   Pressable,
   SafeAreaView,
@@ -11,27 +12,33 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import {
   deleteCustomRule,
-  getCustomRulesAdmin,
+  getAllRulesAdmin,
   setCustomRuleEnabled,
+  setSystemRuleActive,
 } from '../database/DatabaseService';
 import { Rule } from '../engine/types';
 import { RuleStorageService } from '../services/RuleStorageService';
 
 import RuleBuilder from '../components/RuleBuilder';
 import TestBench from '../components/TestBench';
+import BottomNav from '../components/BottomNav';
+import Accordion from '../components/ui/Accordion';
+import AdminSettings from '../components/AdminSettings';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type AdminTab = 'LIST' | 'BUILDER' | 'TEST_BENCH';
+type AdminTab = 'LIST' | 'BUILDER' | 'TEST_BENCH' | 'SETTINGS';
 
-interface CustomRuleRecord {
+interface RuleRecord {
   rule: Rule;
   isEnabled: boolean;
+  isSystem: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,12 +46,12 @@ interface CustomRuleRecord {
 // ---------------------------------------------------------------------------
 
 interface AdminScreenProps {
-  onSwitchToUser?: () => void;
+  onSwitchToWelcome: () => void;
 }
 
-export default function AdminScreen({ onSwitchToUser }: AdminScreenProps) {
+export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('LIST');
-  const [customRules, setCustomRules] = useState<CustomRuleRecord[]>([]);
+  const [allRules, setAllRules] = useState<RuleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -54,10 +61,10 @@ export default function AdminScreen({ onSwitchToUser }: AdminScreenProps) {
   const fetchRules = async () => {
     setIsLoading(true);
     try {
-      const rules = await getCustomRulesAdmin();
-      setCustomRules(rules);
+      const rules = await getAllRulesAdmin();
+      setAllRules(rules);
     } catch (error) {
-      console.error('Failed to load custom rules:', error);
+      console.error('Failed to load rules:', error);
       Alert.alert('Error', 'Failed to load rules.');
     } finally {
       setIsLoading(false);
@@ -66,13 +73,17 @@ export default function AdminScreen({ onSwitchToUser }: AdminScreenProps) {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  const handleToggleRule = async (id: string, currentlyEnabled: boolean) => {
+  const handleToggleRule = async (id: string, currentlyEnabled: boolean, isSystem: boolean) => {
     try {
       // Optimistic UI update
-      setCustomRules(prev =>
+      setAllRules(prev =>
         prev.map(r => (r.rule.id === id ? { ...r, isEnabled: !currentlyEnabled } : r))
       );
-      await setCustomRuleEnabled(id, !currentlyEnabled);
+      if (isSystem) {
+        await setSystemRuleActive(id, !currentlyEnabled);
+      } else {
+        await setCustomRuleEnabled(id, !currentlyEnabled);
+      }
     } catch (err) {
       // Revert on failure
       fetchRules();
@@ -80,7 +91,12 @@ export default function AdminScreen({ onSwitchToUser }: AdminScreenProps) {
     }
   };
 
-  const handleDeleteRule = (id: string) => {
+  const handleDeleteRule = (id: string, isSystem: boolean) => {
+    if (isSystem) {
+      Alert.alert('Restricted', 'System rules cannot be deleted for clinical safety reasons. You may disable them instead.');
+      return;
+    }
+
     Alert.alert('Delete Rule', `Are you sure you want to delete ${id}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -125,98 +141,110 @@ export default function AdminScreen({ onSwitchToUser }: AdminScreenProps) {
     }
   };
 
+
   // ── Render Helpers ────────────────────────────────────────────────────────
 
   const renderListTab = () => {
     if (isLoading) {
       return (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#6366F1" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       );
     }
 
-    if (customRules.length === 0) {
+    if (allRules.length === 0) {
       return (
         <View style={styles.center}>
-          <Text style={styles.emptyText}>No custom rules defined yet.</Text>
+          <Text style={styles.emptyText}>No rules defined yet.</Text>
         </View>
       );
     }
 
     return (
       <ScrollView contentContainerStyle={styles.listContent}>
-        {customRules.map(({ rule, isEnabled }) => (
-          <View key={rule.id} style={styles.ruleCard}>
-            <View style={styles.ruleCardHeader}>
-              <View>
-                <Text style={styles.ruleId}>{rule.id}</Text>
-                <Text style={styles.ruleRisk}>
-                  {rule.metadata.riskCategory} • Priority {rule.metadata.priority}
+        <View style={styles.listHeaderRow}>
+          <View>
+            <Text style={styles.pageTitle}>Clinical Rules</Text>
+            <Text style={styles.pageSubtitle}>Manage and review the active logic.</Text>
+          </View>
+          <View style={styles.listActionGroup}>
+            <Pressable style={styles.listActionBtn} onPress={handleImport}>
+              <Text style={styles.listActionText}>↓ Import</Text>
+            </Pressable>
+            <Pressable style={styles.listActionBtn} onPress={handleExport}>
+              <Text style={styles.listActionText}>↑ Export</Text>
+            </Pressable>
+          </View>
+        </View>
+        
+        {allRules.map(({ rule, isEnabled, isSystem }) => (
+          <Accordion key={rule.id} title={isSystem ? `🔒 ${rule.id}` : rule.id} icon="shield">
+            <View style={styles.ruleDetails}>
+              <View style={styles.ruleSection}>
+                <Text style={styles.ruleSectionTitle}>IF (Conditions)</Text>
+                {rule.antecedents.map((ant, idx) => (
+                  <Text key={idx} style={styles.ruleCode}>
+                    • {ant.fact} {ant.operator} {String(ant.value)}
+                  </Text>
+                ))}
+              </View>
+
+              <View style={styles.ruleSection}>
+                <Text style={styles.ruleSectionTitle}>THEN (Result)</Text>
+                <Text style={styles.ruleCode}>
+                  → {rule.consequent.fact} = {String(rule.consequent.value)}
                 </Text>
               </View>
-              <Switch
-                value={isEnabled}
-                onValueChange={() => handleToggleRule(rule.id, isEnabled)}
-                trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
-              />
+
+              <View style={styles.ruleSection}>
+                <Text style={styles.ruleSectionTitle}>Metadata</Text>
+                <Text style={styles.ruleCode}>Risk: {rule.metadata.riskCategory}</Text>
+                <Text style={styles.ruleCode}>Priority: {rule.metadata.priority}</Text>
+                <Text style={styles.ruleCode}>Advice: {rule.metadata.triageAdvice}</Text>
+              </View>
+
+              <View style={styles.ruleActions}>
+                <Switch
+                  value={isEnabled}
+                  onValueChange={() => handleToggleRule(rule.id, isEnabled, isSystem)}
+                  trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+                />
+                {!isSystem ? (
+                  <Pressable onPress={() => handleDeleteRule(rule.id, isSystem)} style={styles.deleteBtn}>
+                    <Text style={styles.deleteText}>Delete Rule</Text>
+                  </Pressable>
+                ) : (
+                  <Text style={{ color: '#94A3B8', fontSize: 12, fontStyle: 'italic' }}>System Rule (Read-Only)</Text>
+                )}
+              </View>
             </View>
-            <View style={styles.ruleCardFooter}>
-              <Text style={styles.ruleDesc} numberOfLines={2}>
-                {rule.metadata.description || 'No description provided.'}
-              </Text>
-              <Pressable onPress={() => handleDeleteRule(rule.id)}>
-                <Text style={styles.deleteText}>Delete</Text>
-              </Pressable>
-            </View>
-          </View>
+          </Accordion>
         ))}
       </ScrollView>
     );
   };
+
 
   return (
     <SafeAreaView style={styles.root}>
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <View style={styles.headerTitleGroup}>
-            <Pressable style={styles.closeBtn} onPress={onSwitchToUser}>
-              <Text style={styles.closeBtnText}>✕</Text>
-            </Pressable>
-            <Text style={styles.headerTitle}>Admin</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>ArayKo!</Text>
+            <Text style={styles.headerSubtitle}>Clinical Admin</Text>
           </View>
-          <View style={styles.headerActions}>
-            <Pressable style={styles.iconBtn} onPress={handleImport}>
-              <Text style={styles.iconBtnText}>↓ Import</Text>
-            </Pressable>
-            <Pressable style={styles.iconBtn} onPress={handleExport}>
-              <Text style={styles.iconBtnText}>↑ Export</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* ── Tab Bar ── */}
-        <View style={styles.tabBar}>
-          {(['LIST', 'BUILDER', 'TEST_BENCH'] as AdminTab[]).map(tab => {
-            const isActive = activeTab === tab;
-            const labels: Record<AdminTab, string> = {
-              LIST: 'Rules',
-              BUILDER: 'Builder',
-              TEST_BENCH: 'Test Bench',
-            };
-            return (
-              <Pressable
-                key={tab}
-                style={[styles.tab, isActive && styles.tabActive]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                  {labels[tab]}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <Pressable 
+            style={(state: any) => [
+              styles.homeBtn,
+              state.hovered && styles.homeBtnHovered,
+              state.pressed && styles.homeBtnPressed
+            ]} 
+            onPress={onSwitchToWelcome}
+          >
+            <Feather name="home" size={22} color="#059669" />
+          </Pressable>
         </View>
       </View>
 
@@ -225,7 +253,20 @@ export default function AdminScreen({ onSwitchToUser }: AdminScreenProps) {
         {activeTab === 'LIST' && renderListTab()}
         {activeTab === 'BUILDER' && <RuleBuilder onRuleSaved={fetchRules} />}
         {activeTab === 'TEST_BENCH' && <TestBench />}
+        {activeTab === 'SETTINGS' && <AdminSettings />}
       </View>
+
+      {/* ── Bottom Nav ── */}
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        tabs={[
+          { id: 'LIST', label: 'Rules', icon: 'list' },
+          { id: 'BUILDER', label: 'Builder', icon: 'tool' },
+          { id: 'TEST_BENCH', label: 'Test', icon: 'cpu' },
+          { id: 'SETTINGS', label: 'Security', icon: 'shield' }
+        ]}
+      />
     </SafeAreaView>
   );
 }
@@ -235,11 +276,11 @@ export default function AdminScreen({ onSwitchToUser }: AdminScreenProps) {
 // ---------------------------------------------------------------------------
 
 const COLORS = {
-  bg: '#F8FAFC',
+  bg: '#F0FDF4',
   card: '#FFFFFF',
-  border: '#E2E8F0',
-  primary: '#10B981', // Clean green for primary admin actions
-  text: '#0F172A',
+  border: '#D1FAE5',
+  primary: '#10B981', // Emerald
+  text: '#064E3B',
   muted: '#64748B',
   danger: '#EF4444',
 };
@@ -262,37 +303,49 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    width: '100%',
+    position: 'relative',
+    paddingTop: 4,
     paddingBottom: 12,
   },
-  headerTitleGroup: {
-    flexDirection: 'row',
+  headerCenter: {
     alignItems: 'center',
-    gap: 12,
   },
-  closeBtn: {
-    backgroundColor: '#F3F4F6',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#064E3B',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '700',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif',
+  },
+  homeBtn: {
+    position: 'absolute',
+    right: 20,
+    padding: 8,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.muted,
+  homeBtnHovered: {
+    backgroundColor: '#D1FAE5',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
+  homeBtnPressed: {
+    backgroundColor: '#A7F3D0',
+    transform: [{ scale: 0.94 }],
   },
   iconBtn: {
     backgroundColor: '#F3F4F6',
@@ -306,89 +359,113 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
-  // ── Tab Bar ──
-  tabBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: -1, // Overlap border
-  },
-  tab: {
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderBottomWidth: 2,
-    borderColor: 'transparent',
-  },
-  tabActive: {
-    borderColor: COLORS.primary,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.muted,
-  },
-  tabTextActive: {
-    color: COLORS.primary,
-  },
+  // ── Tab Bar (No longer used, using BottomNav) ──
+  tabBar: {},
+  tab: {},
+  tabActive: {},
+  tabText: {},
+  tabTextActive: {},
 
   // ── Content ──
   content: {
     flex: 1,
   },
   listContent: {
-    padding: 16,
+    padding: 24,
     gap: 12,
+  },
+  listHeaderRow: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    gap: 16,
+  },
+  listActionGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  listActionBtn: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  listActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
   },
   emptyText: {
     color: COLORS.muted,
     fontStyle: 'italic',
   },
-
-  // ── Rule Card ──
-  ruleCard: {
-    backgroundColor: COLORS.card,
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#064E3B',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  pageSubtitle: {
+    fontSize: 16,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  ruleDetails: {
+    marginTop: 8,
+  },
+  ruleSection: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 16,
+    borderColor: '#E2E8F0',
   },
-  ruleCardHeader: {
+  ruleSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  ruleCode: {
+    fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  ruleActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  ruleId: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-    fontFamily: 'monospace',
-    marginBottom: 2,
-  },
-  ruleRisk: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.muted,
-  },
-  ruleCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
     marginTop: 8,
-    paddingTop: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderColor: '#F3F4F6',
+    borderTopColor: '#E2E8F0',
   },
-  ruleDesc: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.muted,
-    marginRight: 12,
+  deleteBtn: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   deleteText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.danger,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DC2626',
   },
 });
 

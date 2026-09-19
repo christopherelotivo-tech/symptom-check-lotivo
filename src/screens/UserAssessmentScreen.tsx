@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   SafeAreaView,
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import { InferenceEngine }     from '../engine/InferenceEngine';
 import {
@@ -40,9 +42,20 @@ function deriveTriageResult(
   auditTrail: AuditTrailEntry[],
   rules: Rule[]
 ): TriageResult | null {
+  const overrideEntry = auditTrail.find(e => e.type === 'AGGREGATE_SEVERITY_OVERRIDE') as any;
+
   const firedRuleIds = auditTrail
     .filter((e): e is RuleFiredAuditEntry => e.type === 'RULE_FIRED')
     .map(e => e.ruleId);
+
+  if (overrideEntry) {
+    return {
+      riskCategory: overrideEntry.newRiskCategory,
+      triageAdvice: `We noticed a combination of severe symptoms. Please seek clinical evaluation immediately.`,
+      description: `Your combined symptom severity score reached ${overrideEntry.aggregateScore.toFixed(1)}, triggering an automatic safety escalation.`,
+      firedRuleIds,
+    };
+  }
 
   if (firedRuleIds.length === 0) return null;
 
@@ -75,7 +88,7 @@ function deriveTriageResult(
  */
 function buildUserInputEntries(memory: WorkingMemory): UserInputAuditEntry[] {
   return Object.entries(memory)
-    .filter(([, value]) => value === true)
+    .filter(([, state]) => state.value === true)
     .map(([fact]) => ({
       id:        Math.random().toString(36).slice(2) + Date.now().toString(36),
       timestamp: Date.now(),
@@ -87,26 +100,30 @@ function buildUserInputEntries(memory: WorkingMemory): UserInputAuditEntry[] {
 
 // ---------------------------------------------------------------------------
 // Tab type
+import SeverityGauge from '../components/SeverityGauge';
+
+import BottomNav from '../components/BottomNav';
+
+// ---------------------------------------------------------------------------
+// Type & Config
 // ---------------------------------------------------------------------------
 
-type Tab = 'symptoms' | 'results';
-
-// ---------------------------------------------------------------------------
-// Screen
-// ---------------------------------------------------------------------------
+type TabState = 'SYMPTOMS' | 'RESULTS';
 
 interface UserAssessmentScreenProps {
-  onSwitchToAdmin?: () => void;
+  onSwitchToWelcome: () => void;
 }
 
-export default function UserAssessmentScreen({ onSwitchToAdmin }: UserAssessmentScreenProps) {
+export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessmentScreenProps) {
   // ── Core state ───────────────────────────────────────────────────────────
   const [rules,        setRules]        = useState<Rule[]>([]);
   const [memory,       setMemory]       = useState<WorkingMemory>({});
   const [auditTrail,   setAuditTrail]   = useState<AuditTrailEntry[]>([]);
   const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
-  const [activeTab,    setActiveTab]    = useState<Tab>('symptoms');
-  const [isLoading,    setIsLoading]    = useState(true);
+
+  // ── UI state ─────────────────────────────────────────────────────────────
+  const [activeTab,    setActiveTab]    = useState<TabState>('SYMPTOMS');
+  const [isLoading,    setIsLoading]    = useState<boolean>(true);
   const [loadError,    setLoadError]    = useState<string | null>(null);
 
   // Memoised engine instance — rebuilt only when the rule set changes.
@@ -159,9 +176,9 @@ export default function UserAssessmentScreen({ onSwitchToAdmin }: UserAssessment
 
   // ── 3. Symptom toggle handler ─────────────────────────────────────────────
   const handleToggle = useCallback(
-    (fact: string, value: boolean) => {
+    (fact: string, value: boolean, weight: number) => {
       setMemory(prev => {
-        const nextMemory = { ...prev, [fact]: value };
+        const nextMemory = { ...prev, [fact]: { value, weight } };
         // Evaluate immediately after mutating Working Memory.
         runEvaluation(nextMemory, rules);
         return nextMemory;
@@ -171,13 +188,13 @@ export default function UserAssessmentScreen({ onSwitchToAdmin }: UserAssessment
   );
 
   // ── Tab change — auto-switch to Results when engine fires rules ───────────
-  const handleTabChange = useCallback((tab: Tab) => {
+  const handleTabChange = useCallback((tab: TabState) => {
     setActiveTab(tab);
   }, []);
 
   // Unread results badge: show when on Symptoms tab and results are available.
   const hasResults      = triageResult !== null;
-  const showResultsBadge = activeTab === 'symptoms' && hasResults;
+  const showResultsBadge = activeTab === 'SYMPTOMS' && hasResults;
 
   // ── Loading / error states ────────────────────────────────────────────────
   if (isLoading) {
@@ -202,74 +219,36 @@ export default function UserAssessmentScreen({ onSwitchToAdmin }: UserAssessment
   // ── Main render ───────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.root}>
-
       {/* ── Header ───────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <View style={styles.headerTextGroup}>
-          <Text style={styles.headerTitle}>Symptom Assessment</Text>
-          <Text style={styles.headerSubtitle}>
-            {rules.length} rule{rules.length !== 1 ? 's' : ''} loaded
-          </Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>ArayKo!</Text>
+          <Text style={styles.headerSubtitle}>Symptom Assessment</Text>
         </View>
         <Pressable 
-          style={styles.adminButton} 
-          onPress={onSwitchToAdmin}
-          accessibilityLabel="Open Admin Mode"
+          style={(state: any) => [
+            styles.homeBtn,
+            state.hovered && styles.homeBtnHovered,
+            state.pressed && styles.homeBtnPressed
+          ]} 
+          onPress={onSwitchToWelcome}
+          accessibilityLabel="Back to Home"
         >
-          <Text style={styles.adminButtonText}>⚙️ Admin</Text>
+          <Feather name="home" size={22} color="#059669" />
         </Pressable>
-      </View>
-
-      {/* ── Tab bar ──────────────────────────────────────────────── */}
-      <View style={styles.tabBar}>
-        {(['symptoms', 'results'] as Tab[]).map(tab => {
-          const isActive = activeTab === tab;
-          const label    = tab === 'symptoms' ? '📋  Symptoms' : '🩺  Results';
-
-          return (
-            <Pressable
-              key={tab}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => handleTabChange(tab)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={tab === 'symptoms' ? 'Symptoms tab' : 'Results tab'}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {label}
-              </Text>
-
-              {/* Unread badge on Results tab */}
-              {tab === 'results' && showResultsBadge && (
-                <View style={[
-                  styles.badge,
-                  { backgroundColor: triageResult?.riskCategory === 'Red'
-                      ? COLORS.red
-                      : triageResult?.riskCategory === 'Amber'
-                        ? COLORS.amber
-                        : COLORS.green },
-                ]}>
-                  <Text style={styles.badgeText}>●</Text>
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
       </View>
 
       {/* ── Tab content ──────────────────────────────────────────── */}
       <View style={styles.content}>
-
-        {/* Symptoms tab — SymptomForm owns its own ScrollView */}
-        {activeTab === 'symptoms' && (
-          <SymptomForm
-            memory={memory}
-            onToggle={handleToggle}
-          />
-        )}
-
-        {/* Results tab — TriageCard + AuditTrailView in a ScrollView */}
-        {activeTab === 'results' && (
+        {activeTab === 'SYMPTOMS' ? (
+          <View style={styles.symptomsContent}>
+            <SeverityGauge memory={memory} />
+            <SymptomForm
+              memory={memory}
+              onToggle={handleToggle}
+            />
+          </View>
+        ) : (
           <ScrollView
             style={styles.resultsScroll}
             contentContainerStyle={styles.resultsContent}
@@ -291,6 +270,15 @@ export default function UserAssessmentScreen({ onSwitchToAdmin }: UserAssessment
         )}
       </View>
 
+      {/* ── Bottom Nav ───────────────────────────────────────────── */}
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        tabs={[
+          { id: 'SYMPTOMS', label: 'Symptoms', icon: 'clipboard' },
+          { id: 'RESULTS', label: hasResults ? 'Results 🔴' : 'Results', icon: 'activity' }
+        ]}
+      />
     </SafeAreaView>
   );
 }
@@ -300,11 +288,11 @@ export default function UserAssessmentScreen({ onSwitchToAdmin }: UserAssessment
 // ---------------------------------------------------------------------------
 
 const COLORS = {
-  primary:    '#6366F1',
-  bg:         '#F8FAFC',
+  primary:    '#10B981', // Emerald Green
+  bg:         '#F0FDF4', // Soft Mint
   card:       '#FFFFFF',
-  border:     '#E2E8F0',
-  title:      '#0F172A',
+  border:     '#D1FAE5', // Light Green border
+  title:      '#064E3B', // Deep Forest Green
   subtitle:   '#64748B',
   tabBg:      '#F1F5F9',
   tabActive:  '#FFFFFF',
@@ -330,43 +318,55 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  // ── Header ───────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? 16 : 8,
-    paddingBottom: 12,
+    paddingBottom: 16,
     backgroundColor: COLORS.card,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    position: 'relative',
   },
-  headerTextGroup: {
-    flex: 1,
+  headerCenter: {
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.title,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#064E3B',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: COLORS.subtitle,
+    color: '#10B981',
+    fontWeight: '700',
     marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif',
   },
-  adminButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: COLORS.tabBg,
-    borderRadius: 8,
+  homeBtn: {
+    position: 'absolute',
+    right: 20,
+    bottom: 12,
+    padding: 8,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  adminButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.subtitle,
+  homeBtnHovered: {
+    backgroundColor: '#D1FAE5',
+  },
+  homeBtnPressed: {
+    backgroundColor: '#A7F3D0',
+    transform: [{ scale: 0.94 }],
   },
 
   // ── Tab bar ──────────────────────────────────────────────────────────────
@@ -424,6 +424,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  symptomsContent: {
+    flex: 1,
+  },
   resultsScroll: {
     flex: 1,
   },
@@ -465,4 +468,3 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
 });
-

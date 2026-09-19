@@ -54,35 +54,35 @@ describe('InferenceEngine', () => {
 
   it('1. should seed Working Memory and trigger forward chaining', () => {
     const initialMemory: WorkingMemory = {
-      fever: true,
-      shortness_of_breath: true
+      fever: { value: true, weight: 0 },
+      shortness_of_breath: { value: true, weight: 0 }
     };
 
     const { memory } = engine.evaluate(initialMemory);
 
     // Validate that the correct fact was derived by forward chaining
-    expect(memory['severe_respiratory_risk']).toBe(true);
+    expect(memory['severe_respiratory_risk']?.value).toBe(true);
   });
 
   it('2. should derive intermediate facts through multiple rules', () => {
     const initialMemory: WorkingMemory = {
-      fever: true,
-      shortness_of_breath: true
+      fever: { value: true, weight: 0 },
+      shortness_of_breath: { value: true, weight: 0 }
     };
 
     const { memory } = engine.evaluate(initialMemory);
 
     // Chaining sequence:
     // (fever + shortness_of_breath) -> severe_respiratory_risk -> refer_to_er
-    expect(memory['severe_respiratory_risk']).toBe(true);
-    expect(memory['refer_to_er']).toBe(true);
-    expect(memory['drink_fluids']).toBe(true);
+    expect(memory['severe_respiratory_risk']?.value).toBe(true);
+    expect(memory['refer_to_er']?.value).toBe(true);
+    expect(memory['drink_fluids']?.value).toBe(true);
   });
 
   it('3. should execute matching rules in descending priority order', () => {
     const initialMemory: WorkingMemory = {
-      fever: true,
-      shortness_of_breath: true
+      fever: { value: true, weight: 0 },
+      shortness_of_breath: { value: true, weight: 0 }
     };
 
     const { auditTrail } = engine.evaluate(initialMemory);
@@ -106,8 +106,8 @@ describe('InferenceEngine', () => {
 
   it('4. should record rule firings and derived facts in a clear Audit Trail', () => {
     const initialMemory: WorkingMemory = {
-      fever: true,
-      shortness_of_breath: true
+      fever: { value: true, weight: 0.3 },
+      shortness_of_breath: { value: true, weight: 0.8 }
     };
 
     const { auditTrail } = engine.evaluate(initialMemory);

@@ -134,17 +134,33 @@ export async function getSystemRules(): Promise<Rule[]> {
 }
 
 /**
- * Returns custom rules with their enabled state for admin UI.
+ * Returns all rules with their enabled state for admin UI.
+ * System rules use `is_active`, custom rules use `is_enabled`.
  */
-export async function getCustomRulesAdmin(): Promise<{ rule: Rule; isEnabled: boolean }[]> {
+export async function getAllRulesAdmin(): Promise<{ rule: Rule; isEnabled: boolean; isSystem: boolean }[]> {
   const database = await getDb();
-  const rows = await database.getAllAsync<{ rule_json: string; is_enabled: number }>(
+  
+  const systemRows = await database.getAllAsync<{ rule_json: string; is_active: number }>(
+    'SELECT rule_json, is_active FROM system_rules'
+  );
+  
+  const customRows = await database.getAllAsync<{ rule_json: string; is_enabled: number }>(
     'SELECT rule_json, is_enabled FROM custom_rules ORDER BY created_at ASC'
   );
-  return rows.map(row => ({
+
+  const sysRules = systemRows.map(row => ({
+    rule: JSON.parse(row.rule_json) as Rule,
+    isEnabled: row.is_active === 1,
+    isSystem: true,
+  }));
+
+  const custRules = customRows.map(row => ({
     rule: JSON.parse(row.rule_json) as Rule,
     isEnabled: row.is_enabled === 1,
+    isSystem: false,
   }));
+
+  return [...sysRules, ...custRules];
 }
 
 /**

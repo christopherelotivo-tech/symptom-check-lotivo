@@ -2,153 +2,114 @@ import React from 'react';
 import {
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
+  Platform,
 } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { WorkingMemory } from '../engine/types';
+import Checkbox from './ui/Checkbox';
 
 // ---------------------------------------------------------------------------
-// Data model — strictly declarative, zero medical logic
+// Data model
 // ---------------------------------------------------------------------------
 
 interface SymptomItem {
-  /** The Working Memory key — must match rule antecedent fact names exactly. */
   factKey: string;
-  /** Human-readable label shown next to the switch. */
   label: string;
+  weight: number;
 }
 
 interface SymptomCategory {
   title: string;
+  iconType: 'Feather' | 'MaterialCommunityIcons';
+  iconName: any;
   symptoms: SymptomItem[];
 }
 
-/**
- * The full symptom catalogue, organised into display categories.
- *
- * Keys must exactly match the fact names used in seedRules.json.
- * No conditional or medical evaluation logic lives here.
- */
 const SYMPTOM_CATEGORIES: SymptomCategory[] = [
   {
-    title: '🫁 Respiratory',
+    title: 'Respiratory',
+    iconType: 'MaterialCommunityIcons',
+    iconName: 'lungs',
     symptoms: [
-      { factKey: 'shortness_of_breath', label: 'Shortness of Breath' },
-      { factKey: 'cough',               label: 'Cough' },
-      { factKey: 'wheezing',            label: 'Wheezing' },
-      { factKey: 'chest_pain',          label: 'Chest Pain' },
+      { factKey: 'shortness_of_breath', label: 'Shortness of Breath', weight: 0.8 },
+      { factKey: 'cough',               label: 'Cough', weight: 0.2 },
+      { factKey: 'wheezing',            label: 'Wheezing', weight: 0.4 },
+      { factKey: 'chest_pain',          label: 'Chest Pain', weight: 0.9 },
     ],
   },
   {
-    title: '🩺 Systemic',
+    title: 'Systemic',
+    iconType: 'Feather',
+    iconName: 'activity',
     symptoms: [
-      { factKey: 'fever',    label: 'Fever' },
-      { factKey: 'fatigue',  label: 'Fatigue' },
-      { factKey: 'nausea',   label: 'Nausea' },
-      { factKey: 'vomiting', label: 'Vomiting' },
+      { factKey: 'fever',    label: 'Fever', weight: 0.3 },
+      { factKey: 'fatigue',  label: 'Fatigue', weight: 0.1 },
+      { factKey: 'nausea',   label: 'Nausea', weight: 0.2 },
+      { factKey: 'vomiting', label: 'Vomiting', weight: 0.3 },
     ],
   },
   {
-    title: '🧠 Neurological',
+    title: 'Neurological',
+    iconType: 'MaterialCommunityIcons',
+    iconName: 'brain',
     symptoms: [
-      { factKey: 'headache',   label: 'Headache' },
-      { factKey: 'stiff_neck', label: 'Stiff Neck' },
-      { factKey: 'dizziness',  label: 'Dizziness' },
-      { factKey: 'confusion',  label: 'Confusion' },
+      { factKey: 'headache',   label: 'Headache', weight: 0.2 },
+      { factKey: 'stiff_neck', label: 'Stiff Neck', weight: 0.6 },
+      { factKey: 'dizziness',  label: 'Dizziness', weight: 0.3 },
+      { factKey: 'confusion',  label: 'Confusion', weight: 0.8 },
     ],
   },
   {
-    title: '🩹 Dermatological',
+    title: 'Dermatological',
+    iconType: 'Feather',
+    iconName: 'droplet',
     symptoms: [
-      { factKey: 'rash',     label: 'Rash' },
-      { factKey: 'swelling', label: 'Swelling' },
-      { factKey: 'jaundice', label: 'Jaundice (Yellowing)' },
+      { factKey: 'rash',     label: 'Rash', weight: 0.1 },
+      { factKey: 'swelling', label: 'Swelling', weight: 0.3 },
+      { factKey: 'jaundice', label: 'Jaundice (Yellowing)', weight: 0.7 },
     ],
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
 interface SymptomFormProps {
-  /**
-   * The current Working Memory state. The parent component owns this state —
-   * SymptomForm is strictly a controlled, passive view.
-   */
   memory: WorkingMemory;
-
-  /**
-   * Called whenever the user toggles a symptom switch.
-   * Receives the fact key and the new boolean value so the parent can
-   * write directly into Working Memory: `{ ...memory, [fact]: value }`.
-   */
-  onToggle: (fact: string, value: boolean) => void;
+  onToggle: (fact: string, value: boolean, weight: number) => void;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * SymptomForm renders symptoms grouped by clinical category.
- *
- * Design principles:
- * - **Passive**: no medical evaluation, no inference, no conditional logic.
- * - **Controlled**: all state lives in the parent via `memory` + `onToggle`.
- * - **Flat updates**: each toggle writes a single boolean fact key directly
- *   into Working Memory, ready for the InferenceEngine to evaluate.
- */
 export default function SymptomForm({ memory, onToggle }: SymptomFormProps) {
   return (
-    <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={styles.formTitle}>How are you feeling?</Text>
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <Text style={styles.formTitle}>How are you feeling today?</Text>
       <Text style={styles.formSubtitle}>
-        Toggle any symptoms you are currently experiencing.
+        Select any symptoms you are currently experiencing. We will evaluate them in real-time.
       </Text>
 
-      {SYMPTOM_CATEGORIES.map(category => (
+      {SYMPTOM_CATEGORIES.map((category) => (
         <View key={category.title} style={styles.categoryCard}>
-          {/* Category header */}
           <View style={styles.categoryHeader}>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryTitle}>{category.title}</Text>
-            </View>
+            {category.iconType === 'Feather' ? (
+              <Feather name={category.iconName} size={24} color="#064E3B" style={styles.categoryIcon} />
+            ) : (
+              <MaterialCommunityIcons name={category.iconName} size={24} color="#064E3B" style={styles.categoryIcon} />
+            )}
+            <Text style={styles.categoryTitle}>{category.title}</Text>
           </View>
 
-          {/* Symptom rows */}
-          {category.symptoms.map((symptom, index) => {
-            const isActive = memory[symptom.factKey] === true;
-            const isLast   = index === category.symptoms.length - 1;
-
-            return (
-              <View
-                key={symptom.factKey}
-                style={[styles.symptomRow, isLast && styles.symptomRowLast]}
-              >
-                <Text style={[styles.symptomLabel, isActive && styles.symptomLabelActive]}>
-                  {symptom.label}
-                </Text>
-                <Switch
-                  value={isActive}
-                  onValueChange={(newValue: boolean) =>
-                    onToggle(symptom.factKey, newValue)
-                  }
-                  trackColor={{ false: COLORS.trackOff, true: COLORS.trackOn }}
-                  thumbColor={isActive ? COLORS.thumbOn : COLORS.thumbOff}
-                  ios_backgroundColor={COLORS.trackOff}
-                  accessibilityLabel={symptom.label}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: isActive }}
+          <View style={styles.categoryBody}>
+            {category.symptoms.map((symptom) => {
+              const isActive = memory[symptom.factKey]?.value === true;
+              return (
+                <Checkbox
+                  key={symptom.factKey}
+                  label={symptom.label}
+                  checked={isActive}
+                  onChange={(val) => onToggle(symptom.factKey, val, symptom.weight)}
                 />
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>
         </View>
       ))}
     </ScrollView>
@@ -181,74 +142,58 @@ const COLORS = {
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 48,
-    gap: 20,
+    padding: 24,
+    paddingBottom: 40,
   },
   formTitle: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
-    color: COLORS.title,
-    marginBottom: 4,
-    fontFamily: 'System',
+    color: '#064E3B',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   formSubtitle: {
-    fontSize: 15,
-    color: COLORS.subtitle,
-    marginBottom: 12,
-    lineHeight: 22,
-    fontFamily: 'System',
+    fontSize: 16,
+    color: '#10B981',
+    fontWeight: '600',
+    marginBottom: 32,
+    lineHeight: 24,
   },
-
-  // Modern Elevated White Card Container
   categoryCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 6,
+    borderColor: '#E2E8F0',
     shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 2,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  categoryBadge: {
-    // We remove the tinted pill bg for a cleaner minimalist text-only or subtle look
-    paddingHorizontal: 4,
+  categoryIcon: {
+    marginRight: 12,
   },
   categoryTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.badgeText,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#064E3B',
     letterSpacing: 0.5,
-    fontFamily: 'System',
   },
-
-  // Symptom rows
-  symptomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  symptomRowLast: {
-    borderBottomWidth: 0,
-    paddingBottom: 16,
+  categoryBody: {
+    gap: 12,
   },
   symptomLabel: {
     fontSize: 16,
