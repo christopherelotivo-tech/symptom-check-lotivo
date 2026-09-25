@@ -55,6 +55,7 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
   const [isBuilding, setIsBuilding] = useState(false);
   const [allRules, setAllRules] = useState<RuleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeRiskTab, setActiveRiskTab] = useState<'Red' | 'Amber' | 'Green'>('Red');
 
   useEffect(() => {
     fetchRules();
@@ -224,98 +225,95 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
           </View>
         </View>
 
-        {(['Red', 'Amber', 'Green'] as const).map(category => {
-          const categoryRules = allRules.filter(r => r.rule.metadata.riskCategory === category);
-          if (categoryRules.length === 0) return null;
-
-          const sectionColor = category === 'Red' ? COLORS.triageRedIcon
-            : category === 'Amber' ? COLORS.triageAmberIcon
-            : COLORS.triageGreenIcon;
-          const sectionBg = category === 'Red' ? COLORS.triageRedBg
-            : category === 'Amber' ? COLORS.triageAmberBg
-            : COLORS.triageGreenBg;
-          const sectionBorder = category === 'Red' ? COLORS.triageRedBorder
-            : category === 'Amber' ? COLORS.triageAmberBorder
-            : COLORS.triageGreenBorder;
-          const emoji = category === 'Red' ? '🔴' : category === 'Amber' ? '🟡' : '🟢';
-
-          return (
-            <View key={category} style={{ marginBottom: SPACING.xl }}>
-              {/* Section Header */}
-              <View style={[styles.riskSectionHeader, { backgroundColor: sectionBg, borderColor: sectionBorder }]}>
-                <Text style={[styles.riskSectionTitle, { color: sectionColor }]}>
-                  {emoji}  {category === 'Red' ? 'Emergency' : category === 'Amber' ? 'See a Doctor' : 'Low Concern'} Pathways
+        {/* Risk Tabs */}
+        <View style={styles.riskTabsContainer}>
+          {(['Red', 'Amber', 'Green'] as const).map(category => {
+            const count = allRules.filter(r => r.rule.metadata.riskCategory === category).length;
+            const isActive = activeRiskTab === category;
+            
+            const color = category === 'Red' ? COLORS.triageRedIcon : category === 'Amber' ? COLORS.triageAmberIcon : COLORS.triageGreenIcon;
+            const bg = category === 'Red' ? COLORS.triageRedBg : category === 'Amber' ? COLORS.triageAmberBg : COLORS.triageGreenBg;
+            const border = category === 'Red' ? COLORS.triageRedBorder : category === 'Amber' ? COLORS.triageAmberBorder : COLORS.triageGreenBorder;
+            
+            return (
+              <Pressable 
+                key={category} 
+                style={[
+                  styles.riskTabBtn, 
+                  isActive && { backgroundColor: bg, borderColor: border }
+                ]}
+                onPress={() => setActiveRiskTab(category)}
+              >
+                <Text style={[styles.riskTabText, isActive && { color }]}>
+                  {category === 'Red' ? 'Emergency' : category === 'Amber' ? 'Doctor' : 'Low Concern'} ({count})
                 </Text>
-                <Text style={[styles.riskSectionCount, { color: sectionColor }]}>
-                  {categoryRules.length} rule{categoryRules.length !== 1 ? 's' : ''}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Rules List for Active Risk */}
+        {allRules.filter(r => r.rule.metadata.riskCategory === activeRiskTab).map(({ rule, isEnabled, isSystem }) => (
+          <View key={rule.id} style={styles.guidelineCard}>
+            <View style={styles.guidelineHeader}>
+              <View style={styles.guidelineTitleRow}>
+                {isSystem && <Feather name="shield" size={14} color={COLORS.brandBlue} style={{ marginRight: SPACING.sm }} />}
+                <Text style={styles.guidelineTitle} numberOfLines={2}>
+                  {rule.metadata.description || 'Custom Clinical Guideline'}
                 </Text>
               </View>
-
-              {/* Rules in this category */}
-              {categoryRules.map(({ rule, isEnabled, isSystem }) => (
-                <View key={rule.id} style={styles.guidelineCard}>
-                  <View style={styles.guidelineHeader}>
-                    <View style={styles.guidelineTitleRow}>
-                      {isSystem && <Feather name="shield" size={14} color={COLORS.brandBlue} style={{ marginRight: SPACING.sm }} />}
-                      <Text style={styles.guidelineTitle} numberOfLines={2}>
-                        {rule.metadata.description || 'Custom Clinical Guideline'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.guidelineClinicalBody}>
-                    <Text style={styles.clinicalLabel}>Triage Advice</Text>
-                    <Text style={styles.clinicalAdvice}>{rule.metadata.triageAdvice}</Text>
-
-                    <Text style={styles.clinicalLabel}>Required Symptoms</Text>
-                    <View style={styles.symptomPills}>
-                      {rule.antecedents.filter(a => a.value === true).map((ant, idx) => (
-                        <View key={idx} style={styles.symptomPill}>
-                          <Text style={styles.symptomPillText}>{ant.fact.replace(/_/g, ' ')}</Text>
-                        </View>
-                      ))}
-                      {rule.antecedents.filter(a => a.value === false).map((ant, idx) => (
-                        <View key={idx} style={[styles.symptomPill, styles.symptomPillNegative]}>
-                          <Text style={[styles.symptomPillText, styles.symptomPillTextNegative]}>NO {ant.fact.replace(/_/g, ' ')}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  <Accordion title="Show Technical Details" icon="code">
-                    <View style={styles.techDetailsBox}>
-                      <Text style={styles.ruleSectionTitle}>SYSTEM IDENTIFIER</Text>
-                      <Text style={styles.ruleCode}>{rule.id} (Priority: {rule.metadata.priority})</Text>
-                      <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>IF (CONDITIONS)</Text>
-                      {rule.antecedents.map((ant, idx) => (
-                        <Text key={idx} style={styles.ruleCode}>
-                          • {ant.fact} {ant.operator} {String(ant.value)}
-                        </Text>
-                      ))}
-                      <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>THEN (RESULT)</Text>
-                      <Text style={styles.ruleCode}>→ {rule.consequent.fact} = {String(rule.consequent.value)}</Text>
-                    </View>
-                  </Accordion>
-
-                  <View style={styles.ruleActions}>
-                    <Switch
-                      value={isEnabled}
-                      onValueChange={() => handleToggleRule(rule.id, isEnabled, isSystem)}
-                      trackColor={{ false: COLORS.borderLight, true: COLORS.brandBlue }}
-                    />
-                    {!isSystem ? (
-                      <Pressable onPress={() => handleDeleteRule(rule.id, isSystem)} style={styles.deleteBtn}>
-                        <Text style={styles.deleteText}>Delete Guideline</Text>
-                      </Pressable>
-                    ) : (
-                      <Text style={styles.systemNote}>System Guideline (Read-Only)</Text>
-                    )}
-                  </View>
-                </View>
-              ))}
             </View>
-          );
-        })}
+
+            <View style={styles.guidelineClinicalBody}>
+              <Text style={styles.clinicalLabel}>Triage Advice</Text>
+              <Text style={styles.clinicalAdvice}>{rule.metadata.triageAdvice}</Text>
+
+              <Text style={styles.clinicalLabel}>Required Symptoms</Text>
+              <View style={styles.symptomPills}>
+                {rule.antecedents.filter(a => a.value === true).map((ant, idx) => (
+                  <View key={idx} style={styles.symptomPill}>
+                    <Text style={styles.symptomPillText}>{ant.fact.replace(/_/g, ' ')}</Text>
+                  </View>
+                ))}
+                {rule.antecedents.filter(a => a.value === false).map((ant, idx) => (
+                  <View key={idx} style={[styles.symptomPill, styles.symptomPillNegative]}>
+                    <Text style={[styles.symptomPillText, styles.symptomPillTextNegative]}>NO {ant.fact.replace(/_/g, ' ')}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <Accordion title="Technical Details" icon="code">
+              <View style={styles.techDetailsBox}>
+                <Text style={styles.ruleSectionTitle}>SYSTEM IDENTIFIER</Text>
+                <Text style={styles.ruleCode}>{rule.id} (Priority: {rule.metadata.priority})</Text>
+                <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>IF (CONDITIONS)</Text>
+                {rule.antecedents.map((ant, idx) => (
+                  <Text key={idx} style={styles.ruleCode}>
+                    • {ant.fact} {ant.operator} {String(ant.value)}
+                  </Text>
+                ))}
+                <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>THEN (RESULT)</Text>
+                <Text style={styles.ruleCode}>→ {rule.consequent.fact} = {String(rule.consequent.value)}</Text>
+              </View>
+            </Accordion>
+
+            <View style={styles.ruleActions}>
+              <Switch
+                value={isEnabled}
+                onValueChange={() => handleToggleRule(rule.id, isEnabled, isSystem)}
+                trackColor={{ false: COLORS.borderLight, true: COLORS.brandBlue }}
+              />
+              {!isSystem ? (
+                <Pressable onPress={() => handleDeleteRule(rule.id, isSystem)} style={styles.deleteBtn}>
+                  <Text style={styles.deleteText}>Delete Guideline</Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.systemNote}>System Guideline (Read-Only)</Text>
+              )}
+            </View>
+          </View>
+        ))}
       </ScrollView>
     );
   };
@@ -616,23 +614,24 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     fontStyle: 'italic',
   },
-  riskSectionHeader: {
+  riskTabsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: SPACING.sm,
+    marginBottom: SPACING.xl,
+  },
+  riskTabBtn: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
-    marginBottom: SPACING.md,
+    borderColor: COLORS.borderLight,
+    backgroundColor: COLORS.bgSurface,
   },
-  riskSectionTitle: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: TYPOGRAPHY.weight.bold,
-  },
-  riskSectionCount: {
+  riskTabText: {
     fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontWeight: '700',
+    color: COLORS.textMuted,
   },
 });
 
