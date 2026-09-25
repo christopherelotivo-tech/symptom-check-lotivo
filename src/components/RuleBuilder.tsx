@@ -76,7 +76,7 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
   const [antecedents, setAntecedents] = useState<RuleCondition[]>([
     { fact: '', operator: 'EQUALS', value: true },
   ]);
-  const [consequentFact, setConsequentFact] = useState('');
+  const [consequentFact, setConsequentFact] = useState('triage_green');
   const [consequentValue, setConsequentValue] = useState(true);
 
   const [priority, setPriority] = useState('10');
@@ -119,7 +119,7 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
   const resetForm = () => {
     setRuleId('');
     setAntecedents([{ fact: '', operator: 'EQUALS', value: true }]);
-    setConsequentFact('');
+    setConsequentFact('triage_green');
     setConsequentValue(true);
     setPriority('10');
     setRiskCategory('Green');
@@ -272,13 +272,17 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
 
           <Text style={[styles.label, { marginTop: SPACING.xl }]}>Clinical Conclusion</Text>
           <View style={styles.thenCard}>
-            <Text style={styles.label}>Clinical Conclusion</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., possible_infection"
-              value={consequentFact}
-              onChangeText={setConsequentFact}
-              autoCapitalize="none"
+            <Text style={styles.hintText}>
+              What should the engine conclude when ALL conditions above are met?
+            </Text>
+            <SegmentedControl
+              options={[
+                { label: '🟢 Low Concern', value: 'triage_green' },
+                { label: '🟡 See a Doctor', value: 'triage_amber' },
+                { label: '🔴 Emergency', value: 'triage_red' },
+              ]}
+              value={consequentFact || 'triage_green'}
+              onChange={(val) => setConsequentFact(String(val))}
             />
           </View>
         </View>
@@ -496,5 +500,11 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: COLORS.brandNavy,
     fontWeight: TYPOGRAPHY.weight.bold,
+  },
+  hintText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.md,
+    lineHeight: 20,
   },
 });

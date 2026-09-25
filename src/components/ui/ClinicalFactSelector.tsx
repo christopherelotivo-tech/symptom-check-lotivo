@@ -137,10 +137,9 @@ export default function ClinicalFactSelector({ value, onChange }: ClinicalFactSe
         </View>
       )}
 
-      {/* Output Display */}
       <View style={styles.outputBox}>
-        <Text style={styles.outputLabel}>Resulting Internal Observation Key:</Text>
-        <Text style={styles.outputValue}>{value || '(None Selected)'}</Text>
+        <Text style={styles.outputLabel}>Selected condition: </Text>
+        <Text style={styles.outputValue}>{value ? (allSymptoms.find(s => s.factKey === value)?.label ?? value) : '(None Selected)'}</Text>
       </View>
     </View>
   );
