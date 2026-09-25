@@ -180,6 +180,8 @@ export default function WelcomeScreen({ onSelectMode, onAboutPress }: WelcomeScr
           </Text>
         </View>
 
+        <View style={{ flex: 1, minHeight: SPACING.xxxl }} />
+
         {/* Bottom row: About link | Admin link */}
         <View style={styles.bottomRow}>
           <Pressable onPress={onAboutPress} style={styles.bottomLink}>
@@ -302,6 +304,7 @@ const styles = StyleSheet.create({
     marginTop: -16,
   },
   sheetContent: {
+    flexGrow: 1,
     padding: SPACING.xl,
     paddingTop: SPACING.xxl,
     paddingBottom: SPACING.xxxl,
@@ -338,7 +341,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: SPACING.xxxl,
+    marginTop: 0,
     gap: SPACING.md,
   },
   bottomLink: {
