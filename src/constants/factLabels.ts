@@ -1,5 +1,5 @@
 /**
- * ArayKo! Fact Label Map
+ * SymptaCare Fact Label Map
  *
  * Translates internal engine fact keys into approved human-readable strings
  * for the patient-facing UI.
@@ -80,4 +80,5 @@ export function getRawFactKey(factKey: string): string {
 export function hasFactLabel(factKey: string): boolean {
   return factKey in FACT_LABELS;
 }
+
 

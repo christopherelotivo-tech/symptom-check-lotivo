@@ -90,9 +90,9 @@ function PatientZone({ onSwitchToAdmin }: { onSwitchToAdmin: () => void }) {
       <View style={{padding: SPACING.xl}}>
         <View style={styles.historyCard}>
            <Feather name="info" size={24} color={COLORS.brandNavy} style={{marginBottom: SPACING.sm}} />
-           <Text style={{fontWeight: 'bold', fontSize: 16, marginBottom: SPACING.xs}}>About ArayKo!</Text>
+           <Text style={{fontWeight: 'bold', fontSize: 16, marginBottom: SPACING.xs}}>About SymptaCare</Text>
            <Text style={{color: COLORS.textMuted, lineHeight: 20}}>
-             ArayKo! is an offline clinical symptom triage engine. It does not provide medical diagnosis.
+             SymptaCare is an offline clinical symptom triage engine. It does not provide medical diagnosis.
            </Text>
         </View>
         
@@ -176,3 +176,4 @@ const styles = StyleSheet.create({
     elevation: 2,
   }
 });
+

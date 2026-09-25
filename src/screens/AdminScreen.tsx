@@ -320,7 +320,7 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>ArayKo!</Text>
+            <Text style={styles.headerTitle}>SymptaCare</Text>
             <Text style={styles.headerSubtitle}>Clinical Admin</Text>
           </View>
           <Pressable 
@@ -610,5 +610,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   }
 });
+
 
 

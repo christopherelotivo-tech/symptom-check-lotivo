@@ -108,9 +108,9 @@ export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
           <Image
             source={require('../../assets/icons/logo.jpg')}
             style={styles.logoImage}
-            accessibilityLabel="ArayKo! logo"
+            accessibilityLabel="SymptaCare logo"
           />
-          <Text style={styles.heroTitle}>ArayKo!</Text>
+          <Text style={styles.heroTitle}>SymptaCare</Text>
           <Text style={styles.heroTagline}>Your personal health guide</Text>
         </View>
       </View>
@@ -183,7 +183,7 @@ export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
           <View style={styles.dividerLine} />
         </View>
 
-        <Text style={styles.footerCopyright}>© 2026 ArayKo! · Group 4</Text>
+        <Text style={styles.footerCopyright}>© 2026 SymptaCare · Group 4</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -450,3 +450,4 @@ const styles = StyleSheet.create({
 
   // ── Misc ──────────────────────────────────────────────────────────────────
 });
+

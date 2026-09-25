@@ -309,7 +309,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessme
           </Pressable>
         )}
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>ArayKo!</Text>
+          <Text style={styles.headerTitle}>SymptaCare</Text>
           <Text style={styles.headerSubtitle}>
             {activeStep === 'RESULTS' ? 'Your Assessment' : 'Symptom Check'}
           </Text>
@@ -581,6 +581,7 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.weight.bold,
   }
 });
+
 
 
 

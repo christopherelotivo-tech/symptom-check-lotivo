@@ -1,11 +1,11 @@
-# ArayKo! Architecture & Engine Guidelines
+# SymptaCare Architecture & Engine Guidelines
 
-This document explains the core technical architecture, the Inference Engine, and the clinical logic boundaries of the **ArayKo!** mobile application. It is meant to guide developers, AI tools (like Stitch), and designers on how the application processes data and makes decisions.
+This document explains the core technical architecture, the Inference Engine, and the clinical logic boundaries of the **SymptaCare** mobile application. It is meant to guide developers, AI tools (like Stitch), and designers on how the application processes data and makes decisions.
 
 ---
 
-## 1. What is ArayKo!?
-ArayKo! is an **offline, rules-based clinical symptom triage application**. It evaluates a user's symptoms and contextual information (like duration or severity) to recommend a safe clinical next step (e.g., "Seek urgent medical care", "Consider medical advice", or "Low concern").
+## 1. What is SymptaCare?
+SymptaCare is an **offline, rules-based clinical symptom triage application**. It evaluates a user's symptoms and contextual information (like duration or severity) to recommend a safe clinical next step (e.g., "Seek urgent medical care", "Consider medical advice", or "Low concern").
 
 It does **not** use LLMs or generative AI for medical decisions. It relies entirely on a deterministic, auditable **Forward-Chaining Inference Engine** to guarantee 100% predictable and medically safe outcomes.
 
@@ -43,9 +43,10 @@ To maintain clinical safety, there is a strict boundary between the UI (React Na
 3.  **UI is purely a Renderer:** The UI passes facts to the engine, receives a `TriageResult`, and simply renders the risk category and text exactly as returned by the engine.
 
 ## 6. Audit Trail & Explainability
-Because ArayKo! is a healthcare tool, every decision must be auditable. The Inference Engine generates an `AuditTrail` array that records:
+Because SymptaCare is a healthcare tool, every decision must be auditable. The Inference Engine generates an `AuditTrail` array that records:
 *   When a user inputs a fact (`USER_INPUT`)
 *   When a rule fires (`RULE_FIRED`)
 *   When a new fact is derived (`FACT_DERIVED`)
 
 The Patient UI translates this trail into a friendly "Why this result was reached" summary, while the Admin/TestBench UI shows the raw technical trace for debugging.
+

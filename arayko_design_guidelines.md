@@ -1,11 +1,11 @@
-# ArayKo! Design System & Guidelines
+# SymptaCare Design System & Guidelines
 
-This document outlines the core design system, visual identity, and UI/UX guidelines for the **ArayKo!** mobile application. It is meant to serve as a reference for designers and AI tools (like Stitch) to maintain a cohesive, premium, and friendly healthcare consumer aesthetic.
+This document outlines the core design system, visual identity, and UI/UX guidelines for the **SymptaCare** mobile application. It is meant to serve as a reference for designers and AI tools (like Stitch) to maintain a cohesive, premium, and friendly healthcare consumer aesthetic.
 
 ---
 
 ## 1. Core Philosophy
-ArayKo! is a healthcare assessment tool. The design must communicate **trust, calmness, and clarity**. 
+SymptaCare is a healthcare assessment tool. The design must communicate **trust, calmness, and clarity**. 
 - **Not a Developer Console:** Avoid hyper-dense, dark, or overly technical aesthetics.
 - **Friendly Healthcare:** Use soft colors, ample white space, and human-readable conversational language.
 - **Progressive Disclosure:** Present complex medical logic in simple, bite-sized steps (e.g., Symptom -> Context -> Result).
@@ -39,7 +39,7 @@ The application uses a clean, modern sans-serif stack.
     *   **Metadata / Badges:** 10px - 14px, `bold`, uppercase with wide tracking (letter-spacing: 0.5px - 1px).
 
 ## 4. Geometry & Shapes
-The defining visual characteristic of the ArayKo! refresh is the **"Pill" and "Soft Card" geometry**.
+The defining visual characteristic of the SymptaCare refresh is the **"Pill" and "Soft Card" geometry**.
 
 *   **Pill Shapes (`borderRadius: 9999` or `50`):** Used for all primary actionable elements:
     *   Primary CTAs (Buttons)
@@ -65,3 +65,4 @@ Shadows must be airy and non-intrusive.
 *   **Bottom Navigation:** A floating white pill at the bottom of the screen with a subtle shadow, rather than a full-width footer anchored to the edges. Active states use a soft green pill background.
 *   **Checkboxes / Selection:** Treated as horizontal pills. Unselected items have a transparent border and grey icon. Selected items gain a soft green border, a very light mint background, and a green checkmark.
 *   **Explainability (Audit Trails):** Highly technical data (e.g., rule IDs, boolean derivations) must be hidden behind an expandable "Technical Trace" accordion, keeping the primary UI clean for patients.
+

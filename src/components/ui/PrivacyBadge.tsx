@@ -1,5 +1,5 @@
 /**
- * ArayKo! — PrivacyBadge Component
+ * SymptaCare — PrivacyBadge Component
  * Communicates offline/local behavior to the patient.
  * Only makes claims verified by the actual implementation.
  */
@@ -40,4 +40,5 @@ const styles = StyleSheet.create({
     fontWeight: TYPOGRAPHY.weight.semibold,
   },
 });
+
 

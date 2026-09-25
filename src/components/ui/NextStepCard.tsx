@@ -1,5 +1,5 @@
 /**
- * ArayKo! — NextStepCard Component
+ * SymptaCare — NextStepCard Component
  *
  * Presents the existing triageAdvice data with action-oriented visual
  * hierarchy. Does NOT duplicate the text verbatim or invent new advice.
@@ -92,4 +92,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
 

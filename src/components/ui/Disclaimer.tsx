@@ -1,5 +1,5 @@
 /**
- * ArayKo! — Disclaimer Component
+ * SymptaCare — Disclaimer Component
  * Medical disclaimer for the patient result experience.
  * Does not overstate clinical capabilities.
  */
@@ -14,7 +14,7 @@ export default function Disclaimer() {
     <View style={styles.container}>
       <Feather name="info" size={14} color={COLORS.textMuted} style={styles.icon} />
       <Text style={styles.text}>
-        ArayKo! provides a structured symptom assessment and is{' '}
+        SymptaCare provides a structured symptom assessment and is{' '}
         <Text style={styles.bold}>not a medical diagnosis.</Text>
         {' '}If you are concerned about your health or your symptoms worsen,
         please consult a qualified healthcare professional.
@@ -49,4 +49,5 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 });
+
 

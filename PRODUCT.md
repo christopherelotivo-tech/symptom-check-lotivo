@@ -11,10 +11,10 @@ web
 2. Clinical Administrators: Healthcare professionals configuring the underlying clinical rules, risk thresholds, and triage guidance.
 
 ## Product Purpose
-ArayKo! is an offline, knowledge-based symptom checker. It provides users with a structured assessment of their symptoms and returns a deterministic, clinical triage risk category and advice. It exists to provide calm, trustworthy, and immediate triage guidance without relying on online AI models.
+SymptaCare is an offline, knowledge-based symptom checker. It provides users with a structured assessment of their symptoms and returns a deterministic, clinical triage risk category and advice. It exists to provide calm, trustworthy, and immediate triage guidance without relying on online AI models.
 
 ## Positioning
-A deterministic, offline clinical inference engine. Unlike generative AI chatbots, ArayKo! relies strictly on explicit rules, ensuring predictable and medically verifiable triage outcomes.
+A deterministic, offline clinical inference engine. Unlike generative AI chatbots, SymptaCare relies strictly on explicit rules, ensuring predictable and medically verifiable triage outcomes.
 
 ## Operating Context
 Patients primarily use it on mobile devices when feeling unwell, requiring a calm, accessible, and high-trust interface. Clinical Administrators access a PIN-protected section to build and manage rules using a structural Rule Builder and Test Bench.
@@ -26,7 +26,7 @@ Patients primarily use it on mobile devices when feeling unwell, requiring a cal
 - No generative AI in the clinical flow; no invented diagnosis.
 
 ## Brand Commitments
-- Name: ArayKo!
+- Name: SymptaCare
 - Voice: Calm, guided, understandable, reassuring, patient-first.
 - The phrase "Your Assessment" is preferred over "Diagnosis".
 - Technical terminology (FactKey, WorkingMemory) must remain exclusively in the Admin context.
@@ -42,3 +42,4 @@ Patients primarily use it on mobile devices when feeling unwell, requiring a cal
 
 ## Accessibility & Inclusion
 Must maintain high-contrast touch targets (minimum 44px), readable typography, and accessible form inputs suitable for users who may be distressed or visually impaired.
+

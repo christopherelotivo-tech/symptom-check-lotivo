@@ -1,5 +1,5 @@
 /**
- * ArayKo! Design Tokens
+ * SymptaCare Design Tokens
  *
  * Single source of truth for all colors, spacing, radii, shadows,
  * and typography used across the application.
@@ -16,11 +16,11 @@ import { Platform } from 'react-native';
 
 export const COLORS = {
 
-  // ── Brand (derived from ArayKo! logo) ─────────────────────────────────────
+  // ── Brand (derived from SymptaCare logo) ─────────────────────────────────────
   brandNavy:        '#1A3A6C',   // Deep logo blue — primary text, headers
   brandBlue:        '#2B6CB0',   // Mid blue — secondary accents
   brandCyan:        '#38BDF8',   // Cyan — interactive highlights
-  brandGreen:       '#10B981',   // ArayKo green — primary CTA
+  brandGreen:       '#10B981',   // SymptaCare green — primary CTA
   brandGreenDark:   '#059669',   // Darker green — pressed states
 
   // ── Backgrounds ───────────────────────────────────────────────────────────
@@ -150,4 +150,5 @@ export const TYPOGRAPHY = {
     relaxed: 1.75,
   },
 };
+
 
