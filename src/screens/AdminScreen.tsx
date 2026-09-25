@@ -55,7 +55,7 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
   const [isBuilding, setIsBuilding] = useState(false);
   const [allRules, setAllRules] = useState<RuleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeRiskTab, setActiveRiskTab] = useState<'Red' | 'Amber' | 'Green'>('Red');
+  const [activeRiskTab, setActiveRiskTab] = useState<'Red' | 'Amber' | 'Green'>('Green');
 
   useEffect(() => {
     fetchRules();
@@ -227,7 +227,7 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
 
         {/* Risk Tabs */}
         <View style={styles.riskTabsContainer}>
-          {(['Red', 'Amber', 'Green'] as const).map(category => {
+          {(['Green', 'Amber', 'Red'] as const).map(category => {
             const count = allRules.filter(r => r.rule.metadata.riskCategory === category).length;
             const isActive = activeRiskTab === category;
             
