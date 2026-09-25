@@ -36,6 +36,17 @@ const CREATE_CUSTOM_RULES_TABLE = `
   );
 `;
 
+const CREATE_PATIENT_HISTORY_TABLE = `
+  CREATE TABLE IF NOT EXISTS patient_history (
+    id          TEXT PRIMARY KEY NOT NULL,
+    date        INTEGER NOT NULL,
+    symptoms    TEXT NOT NULL,
+    triage      TEXT NOT NULL,
+    advice      TEXT NOT NULL,
+    audit       TEXT NOT NULL
+  );
+`;
+
 // ---------------------------------------------------------------------------
 // Initialisation
 // ---------------------------------------------------------------------------
@@ -43,7 +54,7 @@ const CREATE_CUSTOM_RULES_TABLE = `
 /**
  * Initialises the database on app startup.
  *
- * - Creates `system_rules` and `custom_rules` tables if they don't exist.
+ * - Creates `system_rules`, `custom_rules`, and `patient_history` tables if they don't exist.
  * - Seeds `system_rules` from `seedRules.json` only when the table is empty.
  *
  * Call this once from your root component (e.g. inside a `useEffect` or
@@ -58,6 +69,7 @@ export async function initDatabase(): Promise<void> {
   // Create tables.
   await database.execAsync(CREATE_SYSTEM_RULES_TABLE);
   await database.execAsync(CREATE_CUSTOM_RULES_TABLE);
+  await database.execAsync(CREATE_PATIENT_HISTORY_TABLE);
 
   // Seed system rules only when the table is empty.
   await seedSystemRules(database);

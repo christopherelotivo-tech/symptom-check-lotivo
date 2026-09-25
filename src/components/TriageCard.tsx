@@ -2,134 +2,152 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { TriageResult } from '../engine/types';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
 
 interface TriageCardProps {
   result: TriageResult | null;
 }
 
+// ---------------------------------------------------------------------------
+// Triage config: system label + human pairing + visual treatment
+// triageAdvice and description text come from rule metadata — DO NOT CHANGE
+// ---------------------------------------------------------------------------
+
+const TRIAGE_CONFIG = {
+  Green: {
+    systemLabel:   'GREEN',
+    humanPairing:  'Low concern',
+    icon:          'check-circle' as const,
+    iconColor:     COLORS.triageGreenIcon,
+    textColor:     COLORS.triageGreenText,
+    bgColor:       COLORS.triageGreenBg,
+    borderColor:   COLORS.triageGreenBorder,
+  },
+  Amber: {
+    systemLabel:   'AMBER',
+    humanPairing:  'Consider medical advice',
+    icon:          'alert-circle' as const,
+    iconColor:     COLORS.triageAmberIcon,
+    textColor:     COLORS.triageAmberText,
+    bgColor:       COLORS.triageAmberBg,
+    borderColor:   COLORS.triageAmberBorder,
+  },
+  Red: {
+    systemLabel:   'RED',
+    humanPairing:  'Seek urgent medical care',
+    icon:          'alert-triangle' as const,
+    iconColor:     COLORS.triageRedIcon,
+    textColor:     COLORS.triageRedText,
+    bgColor:       COLORS.triageRedBg,
+    borderColor:   COLORS.triageRedBorder,
+  },
+};
+
 export default function TriageCard({ result }: TriageCardProps) {
+
+  // ── Empty state ────────────────────────────────────────────────────────────
   if (!result) {
     return (
       <View style={[styles.card, styles.emptyCard]}>
-        <Feather name="shield" size={48} color="#94A3B8" style={{ marginBottom: 16 }} />
-        <Text style={styles.emptyTitle}>Awaiting Assessment</Text>
+        <Feather name="clipboard" size={40} color={COLORS.textMuted} style={{ marginBottom: SPACING.base }} />
+        <Text style={styles.emptyTitle}>Your result will appear here</Text>
         <Text style={styles.emptySubtitle}>
-          Select your symptoms to generate a clinical triage recommendation.
+          Go back and select any symptoms you're currently experiencing.
         </Text>
       </View>
     );
   }
 
   const { riskCategory, triageAdvice, description } = result;
-
-  const bgStyles: Record<string, any> = {
-    Red:   styles.bgRed,
-    Amber: styles.bgAmber,
-    Green: styles.bgGreen,
-  };
-
-  const textStyles: Record<string, any> = {
-    Red:   styles.textRed,
-    Amber: styles.textAmber,
-    Green: styles.textGreen,
-  };
-
-  const icons: Record<string, keyof typeof Feather.glyphMap> = {
-    Red: 'alert-triangle',
-    Amber: 'alert-circle',
-    Green: 'check-circle',
-  };
+  const config = TRIAGE_CONFIG[riskCategory] ?? TRIAGE_CONFIG.Green;
 
   return (
-    <View style={[styles.card, bgStyles[riskCategory] || styles.bgGreen]}>
-      <View style={styles.header}>
-        <Feather 
-          name={icons[riskCategory] || 'info'} 
-          size={32} 
-          color={textStyles[riskCategory]?.color || '#000'} 
-        />
-        <Text style={[styles.riskBadge, textStyles[riskCategory]]}>
-          {riskCategory.toUpperCase()} RISK
-        </Text>
+    <View style={[styles.card, { backgroundColor: config.bgColor, borderColor: config.borderColor }]}>
+
+      {/* ── Status header: system label + human pairing ── */}
+      <View style={styles.statusRow}>
+        <Feather name={config.icon} size={28} color={config.iconColor} />
+        <View style={styles.statusText}>
+          <Text style={[styles.systemLabel, { color: config.iconColor }]}>
+            {config.systemLabel}
+          </Text>
+          <Text style={[styles.humanPairing, { color: config.textColor }]}>
+            {config.humanPairing}
+          </Text>
+        </View>
       </View>
 
-      <Text style={[styles.advice, textStyles[riskCategory]]}>{triageAdvice}</Text>
-      
-      {description && (
-        <View style={[styles.divider, { borderTopColor: textStyles[riskCategory]?.color }]}>
-          <Text style={[styles.description, textStyles[riskCategory]]}>{description}</Text>
+      {/* ── Description from rule metadata (unchanged) ── */}
+      {description ? (
+        <View style={[styles.descriptionBox, { borderTopColor: config.borderColor }]}>
+          <Text style={[styles.description, { color: config.textColor }]}>
+            {description}
+          </Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    padding: 32,
-    borderRadius: 24,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 4,
+    padding: SPACING.xl,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1.5,
+    marginBottom: SPACING.md,
+    ...SHADOW.md,
+    shadowOpacity: 0.05,
   },
   emptyCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.bgSurface,
+    borderColor: COLORS.borderLight,
     alignItems: 'center',
-    paddingVertical: 48,
-    borderWidth: 2,
+    paddingVertical: SPACING.xxxl,
     borderStyle: 'dashed',
-    borderColor: '#E2E8F0',
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 8,
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 15,
-    color: '#94A3B8',
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 22,
+    paddingHorizontal: SPACING.base,
   },
-  header: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.base,
+    gap: SPACING.md,
   },
-  riskBadge: {
-    fontSize: 24,
-    fontWeight: '900',
-    marginLeft: 12,
+  statusText: {
+    flex: 1,
+  },
+  systemLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  humanPairing: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
     letterSpacing: -0.5,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
-  advice: {
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 32,
-    marginBottom: 24,
-  },
-  divider: {
-    borderTopWidth: 1,
-    opacity: 0.5,
-    paddingTop: 20,
+  descriptionBox: {
+    paddingTop: SPACING.base,
+    opacity: 0.85,
   },
   description: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '500',
+    fontSize: TYPOGRAPHY.size.base,
+    lineHeight: 22,
+    fontWeight: TYPOGRAPHY.weight.regular,
   },
-  
-  // Dramatic Backgrounds
-  bgRed:   { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 2 },
-  bgAmber: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 2 },
-  bgGreen: { backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', borderWidth: 2 },
-  
-  // High contrast text
-  textRed:   { color: '#991B1B' },
-  textAmber: { color: '#92400E' },
-  textGreen: { color: '#064E3B' },
 });

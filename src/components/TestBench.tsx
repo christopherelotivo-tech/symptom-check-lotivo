@@ -1,21 +1,51 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
 import { InferenceEngine } from '../engine/InferenceEngine';
-import { Rule, WorkingMemory, AuditTrailEntry, RuleFiredAuditEntry, FactDerivedAuditEntry } from '../engine/types';
+import { Rule, WorkingMemory, AuditTrailEntry, RuleFiredAuditEntry, FactDerivedAuditEntry, UserInputAuditEntry } from '../engine/types';
 import { getAllRules } from '../database/DatabaseService';
 import Checkbox from './ui/Checkbox';
+import Accordion from './ui/Accordion';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
+import { SymptomAssessment, mapAssessmentsToMemory } from '../utils/ContextMapper';
+import SymptomContextCard from './SymptomContextCard';
+import { SYMPTOM_CATEGORIES } from './SymptomForm';
+
+const getSymptomLabel = (factKey: string) => {
+  for (const cat of SYMPTOM_CATEGORIES) {
+    const sym = cat.symptoms.find(s => s.factKey === factKey);
+    if (sym) return sym.label;
+  }
+  return factKey;
+};
+
+// Flatten all base symptoms for easy listing in the simulator
+const ALL_BASE_SYMPTOMS = SYMPTOM_CATEGORIES.flatMap(cat => cat.symptoms);
 
 export default function TestBench() {
   const [rules, setRules] = useState<Rule[]>([]);
-  const [memory, setMemory] = useState<WorkingMemory>({});
+  
+  // Patient Simulation State
+  const [assessments, setAssessments] = useState<Record<string, SymptomAssessment>>({});
+  
+  // Advanced Override State
+  const [overrideMemory, setOverrideMemory] = useState<WorkingMemory>({});
+  
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
   
-  const engine = new InferenceEngine(rules);
+  const engine = useMemo(() => new InferenceEngine(rules), [rules]);
 
-  // Extract all unique antecedents to display as virtual switches
-  const inputFacts = Array.from(new Set(
+  // Extract all unique antecedents to display as virtual switches in advanced mode
+  const allScrapedFacts = Array.from(new Set(
     rules.flatMap(r => r.antecedents.map(a => a.fact))
   )).sort();
+
+  // Filter out any facts that are already handled by Patient Simulation (base symptoms + generated context facts)
+  const advancedFacts = allScrapedFacts.filter(fact => {
+    // If it's a known base symptom, hide it from overrides
+    if (ALL_BASE_SYMPTOMS.some(s => s.factKey === fact)) return false;
+    // (Optional) We could also filter out known context keys like `_duration_` but letting them stay in advanced is fine for raw override testing
+    return true;
+  });
 
   useEffect(() => {
     loadRules();
@@ -30,16 +60,11 @@ export default function TestBench() {
     }
   };
 
-  const handleToggleSymptom = (factKey: string, value: boolean) => {
-    // 1. Calculate the new memory state FIRST
-    const nextMemory: WorkingMemory = { ...memory };
-    nextMemory[factKey] = { value, weight: 0.1 };
+  const evaluateEngine = useCallback((newAssessments: Record<string, SymptomAssessment>, newOverrides: WorkingMemory) => {
+    const patientMemory = mapAssessmentsToMemory(Object.values(newAssessments));
+    const nextMemory: WorkingMemory = { ...patientMemory, ...newOverrides };
     
-    // 2. Update React state
-    setMemory(nextMemory);
-
-    // 3. Build the Audit Trail
-    const userInputs: AuditTrailEntry[] = Object.entries(nextMemory)
+    const userInputs: UserInputAuditEntry[] = Object.entries(nextMemory)
       .filter(([, state]) => state.value === true)
       .map(([f]) => ({
         id: Math.random().toString(36).slice(2),
@@ -49,9 +74,45 @@ export default function TestBench() {
         value: true,
       }));
 
-    // 4. Run the Engine immediately with the fresh state
     const result = engine.evaluate(nextMemory, userInputs);
     setAuditTrail(result.auditTrail);
+  }, [engine]);
+
+  // ── Patient Simulator Handlers ──
+  const handleToggleBaseSymptom = (factKey: string, value: boolean, weight: number) => {
+    setAssessments(prev => {
+      const next = { ...prev };
+      if (value) {
+        next[factKey] = { ...(next[factKey] || { factKey, weight }), active: true };
+      } else {
+        if (next[factKey]) {
+          next[factKey] = { ...next[factKey], active: false };
+        }
+      }
+      evaluateEngine(next, overrideMemory);
+      return next;
+    });
+  };
+
+  const handleContextChange = (fact: string, field: 'durationCode' | 'severityCode', value: string) => {
+    setAssessments(prev => {
+      const next = { ...prev };
+      if (next[fact]) {
+        next[fact] = { ...next[fact], [field]: value };
+      }
+      evaluateEngine(next, overrideMemory);
+      return next;
+    });
+  };
+
+  // ── Advanced Override Handlers ──
+  const handleToggleOverride = (factKey: string, value: boolean) => {
+    setOverrideMemory(prev => {
+      const next = { ...prev };
+      next[factKey] = { value, weight: 0 }; // overrides generally don't carry severity weight
+      evaluateEngine(assessments, next);
+      return next;
+    });
   };
 
   const firedRules = auditTrail.filter((e): e is RuleFiredAuditEntry => e.type === 'RULE_FIRED');
@@ -70,35 +131,78 @@ export default function TestBench() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.containerContent}>
-      {/* ── Virtual Symptoms Panel ── */}
+      {/* ── Patient Simulation Panel ── */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Virtual Patient Simulator</Text>
-        <Text style={styles.cardSubtitle}>Toggle facts to trigger real-time evaluation.</Text>
+        <Text style={styles.cardTitle}>Simulate Patient</Text>
+        <Text style={styles.cardSubtitle}>Select symptoms and context to trace exact clinical behavior.</Text>
         
-        <View style={styles.grid}>
-          {inputFacts.length === 0 ? (
-            <Text style={styles.emptyText}>No input facts detected in rules.</Text>
-          ) : (
-            inputFacts.map(fact => {
-              const isActive = memory[fact]?.value === true;
+        <View style={styles.simulationSection}>
+          <Text style={styles.sectionHeading}>Symptoms</Text>
+          <View style={styles.grid}>
+            {ALL_BASE_SYMPTOMS.map(symptom => {
+              const isActive = assessments[symptom.factKey]?.active === true;
               return (
-                <View key={fact} style={styles.gridItem}>
+                <View key={symptom.factKey} style={styles.gridItem}>
                   <Checkbox
-                    label={fact.replace(/_/g, ' ')}
+                    label={symptom.label}
                     checked={isActive}
-                    onChange={val => handleToggleSymptom(fact, val)}
+                    onChange={val => handleToggleBaseSymptom(symptom.factKey, val, symptom.weight)}
                   />
                 </View>
               );
-            })
-          )}
+            })}
+          </View>
         </View>
+
+        {Object.values(assessments).filter(a => a.active).length > 0 && (
+          <View style={[styles.simulationSection, { marginTop: SPACING.xl }]}>
+            <Text style={styles.sectionHeading}>Context</Text>
+            {Object.values(assessments)
+              .filter(a => a.active)
+              .map(a => (
+                <SymptomContextCard
+                  key={a.factKey}
+                  factKey={a.factKey}
+                  symptomName={getSymptomLabel(a.factKey)}
+                  assessment={a}
+                  onChange={handleContextChange}
+                />
+              ))}
+          </View>
+        )}
       </View>
 
-      {/* ── Engine Output Panel ── */}
+      {/* ── Advanced Fact Overrides ── */}
+      <View style={styles.card}>
+        <Accordion title="Advanced Fact Overrides" icon="sliders">
+          <Text style={[styles.cardSubtitle, { marginTop: SPACING.md }]}>
+            Manually force system flags, derived facts, or untracked edge cases.
+          </Text>
+          <View style={styles.grid}>
+            {advancedFacts.length === 0 ? (
+              <Text style={styles.emptyText}>No advanced facts detected.</Text>
+            ) : (
+              advancedFacts.map(fact => {
+                const isActive = overrideMemory[fact]?.value === true;
+                return (
+                  <View key={fact} style={styles.gridItem}>
+                    <Checkbox
+                      label={fact}
+                      checked={isActive}
+                      onChange={val => handleToggleOverride(fact, val)}
+                    />
+                  </View>
+                );
+              })
+            )}
+          </View>
+        </Accordion>
+      </View>
+
+      {/* ── Clinical Assessment Panel ── */}
       <View style={[styles.card, styles.outputCard]}>
         <View style={styles.panelHeaderRow}>
-          <Text style={styles.outputTitle}>Engine Output</Text>
+          <Text style={styles.outputTitle}>Assessment Result</Text>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>LIVE</Text>
@@ -106,7 +210,7 @@ export default function TestBench() {
         </View>
 
         <View style={styles.outcomeBox}>
-          <Text style={styles.outcomeLabel}>Computed Triage Outcome</Text>
+          <Text style={styles.outcomeLabel}>Computed Triage Result</Text>
           {finalOutcome ? (
             <View style={[styles.outcomeBadge, { backgroundColor: getRiskColor(finalOutcome.metadata.riskCategory) }]}>
               <Text style={styles.outcomeBadgeText}>
@@ -121,25 +225,40 @@ export default function TestBench() {
           )}
         </View>
 
-        <View style={styles.logSection}>
-          <Text style={styles.logHeader}>Rules Fired ({firedRules.length})</Text>
-          {firedRules.map((e, idx) => (
-            <Text key={e.id} style={styles.logEntry}>
-              <Text style={{color: '#F59E0B'}}>⚡</Text> {idx + 1}. {e.ruleId}
-            </Text>
-          ))}
-          {firedRules.length === 0 && <Text style={styles.logEmpty}>None</Text>}
-        </View>
+        <Accordion title="Why This Result? (System Trace)" icon="terminal">
+          <View style={styles.traceContainer}>
+            <View style={styles.logSection}>
+              <Text style={styles.logHeader}>Working Memory Imputed</Text>
+              {Object.entries({ ...mapAssessmentsToMemory(Object.values(assessments)), ...overrideMemory })
+                .filter(([, v]) => v.value)
+                .map(([f]) => (
+                  <Text key={f} style={styles.logEntry}>
+                    <Text style={{color: COLORS.brandGreen}}>★</Text> {f}
+                  </Text>
+                ))}
+            </View>
 
-        <View style={styles.logSection}>
-          <Text style={styles.logHeader}>Derived Facts ({derivedFacts.length})</Text>
-          {derivedFacts.map((e, idx) => (
-            <Text key={e.id} style={styles.logEntry}>
-              <Text style={{color: '#3B82F6'}}>↳</Text> {e.fact} = {String(e.value)}
-            </Text>
-          ))}
-          {derivedFacts.length === 0 && <Text style={styles.logEmpty}>None</Text>}
-        </View>
+            <View style={styles.logSection}>
+              <Text style={styles.logHeader}>Rules Fired ({firedRules.length})</Text>
+              {firedRules.map((e, idx) => (
+                <Text key={e.id} style={styles.logEntry}>
+                  <Text style={{color: COLORS.warning}}>⚡</Text> {idx + 1}. {e.ruleId}
+                </Text>
+              ))}
+              {firedRules.length === 0 && <Text style={styles.logEmpty}>None</Text>}
+            </View>
+
+            <View style={styles.logSection}>
+              <Text style={styles.logHeader}>Derived Facts ({derivedFacts.length})</Text>
+              {derivedFacts.map((e, idx) => (
+                <Text key={e.id} style={styles.logEntry}>
+                  <Text style={{color: COLORS.brandCyan}}>+ </Text> {e.fact} = {String(e.value)}
+                </Text>
+              ))}
+              {derivedFacts.length === 0 && <Text style={styles.logEmpty}>None</Text>}
+            </View>
+          </View>
+        </Accordion>
       </View>
     </ScrollView>
   );
@@ -147,10 +266,10 @@ export default function TestBench() {
 
 const getRiskColor = (risk: string) => {
   switch (risk) {
-    case 'Red': return '#DC2626';
-    case 'Amber': return '#D97706';
-    case 'Green': return '#059669';
-    default: return '#64748B';
+    case 'Red': return COLORS.triageRedIcon;
+    case 'Amber': return COLORS.triageAmberIcon;
+    case 'Green': return COLORS.triageGreenIcon;
+    default: return COLORS.textMuted;
   }
 };
 
@@ -159,145 +278,155 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   containerContent: {
-    padding: 24,
-    gap: 24,
+    padding: SPACING.xl,
+    gap: SPACING.xl,
     paddingBottom: 64,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: COLORS.bgSurface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 4,
+    borderColor: COLORS.borderLight,
+    ...SHADOW.md,
   },
   cardTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#064E3B',
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    fontSize: TYPOGRAPHY.size.xxl,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.brandNavy,
+    marginBottom: SPACING.xs,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
     letterSpacing: -0.5,
   },
   cardSubtitle: {
-    fontSize: 16,
-    color: '#10B981',
-    fontWeight: '600',
-    marginBottom: 24,
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.brandBlue,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    marginBottom: SPACING.lg,
+  },
+  sectionHeading: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  simulationSection: {
+    marginBottom: SPACING.sm,
   },
   grid: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   gridItem: {
     width: '100%',
   },
   emptyText: {
-    color: '#94A3B8',
+    color: COLORS.textMuted,
     fontStyle: 'italic',
   },
   outputCard: {
-    backgroundColor: '#0F172A',
-    borderColor: '#1E293B',
-    shadowColor: '#10B981',
+    backgroundColor: COLORS.brandNavy,
+    borderColor: COLORS.brandNavy,
+    shadowColor: COLORS.brandGreen,
     shadowOpacity: 0.1,
   },
   panelHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   outputTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.bgSurface,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
     letterSpacing: -0.5,
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    paddingHorizontal: 12,
+    paddingHorizontal: SPACING.md,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: RADIUS.pill,
   },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.brandGreen,
     marginRight: 6,
   },
   liveText: {
-    color: '#10B981',
-    fontWeight: '700',
-    fontSize: 12,
+    color: COLORS.brandGreen,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontSize: TYPOGRAPHY.size.xs,
     letterSpacing: 1,
   },
   outcomeBox: {
     backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.xl,
+    marginBottom: SPACING.xl,
   },
   outcomeLabel: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '700',
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    marginBottom: SPACING.md,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
   outcomeBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 12,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.pill,
+    marginBottom: SPACING.md,
   },
   outcomeBadgeText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 16,
+    color: COLORS.bgSurface,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    fontSize: TYPOGRAPHY.size.base,
     letterSpacing: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
   outcomeAdvice: {
-    color: '#F8FAFC',
-    fontSize: 16,
+    color: COLORS.bgSurface2,
+    fontSize: TYPOGRAPHY.size.base,
     lineHeight: 24,
-    fontWeight: '500',
+    fontWeight: TYPOGRAPHY.weight.medium,
   },
   outcomeEmpty: {
-    color: '#64748B',
+    color: COLORS.textMuted,
     fontStyle: 'italic',
   },
+  traceContainer: {
+    paddingTop: SPACING.md,
+  },
   logSection: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   logHeader: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '700',
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    marginBottom: SPACING.md,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
   logEntry: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontFamily: 'monospace',
-    marginBottom: 8,
+    color: COLORS.borderLight,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: TYPOGRAPHY.fontFamily.mono,
+    marginBottom: SPACING.sm,
   },
   logEmpty: {
-    color: '#475569',
+    color: COLORS.textMuted,
     fontStyle: 'italic',
   }
 });

@@ -1,19 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, SafeAreaView, TextInput, ActivityIndicator, Image, Platform } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  SafeAreaView,
+  TextInput,
+  ActivityIndicator,
+  Image,
+  Platform,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { PinService } from '../services/PinService';
+import PrivacyBadge from '../components/ui/PrivacyBadge';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
+import PrimaryButton from '../components/ui/PrimaryButton';
 
 interface WelcomeScreenProps {
   onSelectMode: (mode: 'USER' | 'ADMIN') => void;
 }
 
 export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
-  const [showPinAuth, setShowPinAuth] = useState(false);
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState(false);
-  const [expectedPin, setExpectedPin] = useState('1234');
-  const [isLoadingPin, setIsLoadingPin] = useState(false);
+  const [showPinAuth, setShowPinAuth]     = useState(false);
+  const [pin, setPin]                     = useState('');
+  const [error, setError]                 = useState(false);
+  const [expectedPin, setExpectedPin]     = useState('1234');
+  const [isLoadingPin, setIsLoadingPin]   = useState(false);
 
+  // ── PIN auth logic (unchanged) ────────────────────────────────────────────
   const handleAdminPress = async () => {
     setIsLoadingPin(true);
     const savedPin = await PinService.getPin();
@@ -35,272 +49,289 @@ export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
     }
   };
 
+  // ── Main render ───────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Image source={require('../../assets/icons/logo.jpg')} style={styles.logoImage} />
-        <Text style={styles.title}>ArayKo!</Text>
-        <Text style={styles.subtitle}>A Symptom Checker App</Text>
-      </View>
 
       {!showPinAuth ? (
-        <View style={styles.cardsContainer}>
-          {/* Patient Card */}
-          <Pressable 
-            style={(state: any) => [
-              styles.card, 
-              styles.cardSpacing, 
-              state.hovered && styles.cardHovered,
-              state.pressed && styles.cardPressed
-            ]}
-            onPress={() => onSelectMode('USER')}
-          >
-            <View style={styles.cardIconContainer}>
-              <Image source={require('../../assets/icons/patient_new.png')} style={styles.cardImage} />
-            </View>
-            <View style={styles.cardTextContainer}>
-              <Text style={styles.cardTitle}>Start Assessment</Text>
-              <Text style={styles.cardDescription}>Evaluate symptoms and receive triage advice.</Text>
-            </View>
-          </Pressable>
+        <View style={styles.inner}>
 
-          {/* Doctor/Admin Card */}
-          <Pressable 
-            style={(state: any) => [
-              styles.card, 
-              state.hovered && styles.cardHovered,
-              state.pressed && styles.cardPressed
-            ]}
-            onPress={handleAdminPress}
-          >
-            <View style={styles.cardIconContainerAdmin}>
-              <Image source={require('../../assets/icons/doctor_new.jpg')} style={styles.cardImage} />
-            </View>
-            <View style={styles.cardTextContainer}>
-              <Text style={styles.cardTitle}>Clinical Admin</Text>
-              <Text style={styles.cardDescription}>Access rule builder and test bench.</Text>
-            </View>
-          </Pressable>
+          {/* ── Logo & Branding ── */}
+          <View style={styles.logoSection}>
+            <Image
+              source={require('../../assets/icons/logo.jpg')}
+              style={styles.logoImage}
+              accessibilityLabel="ArayKo! logo"
+            />
+            <Text style={styles.heroTitle}>ArayKo!</Text>
+          </View>
+
+          {/* ── Hero Text ── */}
+          <View style={styles.heroSection}>
+            <Text style={styles.heroHeading}>I can help you learn more about your health.</Text>
+            <Text style={styles.heroSubtext}>
+              Tell us what you're experiencing and we'll help you understand what to do next.
+            </Text>
+          </View>
+
+          {/* ── Primary CTA ── */}
+          <PrimaryButton
+            label="Start Symptom Assessment"
+            onPress={() => onSelectMode('USER')}
+            iconName="activity"
+            style={{ width: '100%', maxWidth: 340 }}
+          />
+
+          {/* ── Privacy Badge ── */}
+          <View style={styles.privacyRow}>
+            <PrivacyBadge />
+          </View>
+
+          {/* ── Admin Entry (secondary, non-competing) ── */}
+          <View style={styles.adminSection}>
+            <Text style={styles.adminLabel}>PIN-protected administrative interface</Text>
+            <Pressable
+              style={(state: any) => [
+                styles.adminLink,
+                state.pressed && styles.adminLinkPressed,
+              ]}
+              onPress={isLoadingPin ? undefined : handleAdminPress}
+              accessibilityRole="button"
+              accessibilityLabel="Clinical Admin"
+            >
+              {isLoadingPin ? (
+                <ActivityIndicator size="small" color={COLORS.brandBlue} />
+              ) : (
+                <Text style={styles.adminLinkText}>Clinical Admin  →</Text>
+              )}
+            </Pressable>
+          </View>
+
         </View>
       ) : (
-        <View style={styles.pinContainer}>
-          <Text style={styles.pinTitle}>Enter Clinical PIN</Text>
-          <Text style={styles.pinSubtitle}>Enter your 4-digit security PIN</Text>
-          
-          <TextInput
-            style={[styles.pinInput, error && styles.pinInputError]}
-            value={pin}
-            onChangeText={handlePinChange}
-            keyboardType="number-pad"
-            maxLength={4}
-            secureTextEntry
-            autoFocus
-          />
-          
-          {error && <Text style={styles.errorText}>Incorrect PIN</Text>}
-          
-          <Pressable style={styles.cancelButton} onPress={() => {
-            setShowPinAuth(false);
-            setPin('');
-            setError(false);
-          }}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </Pressable>
+
+        /* ── PIN Entry (functionally unchanged) ── */
+        <View style={styles.inner}>
+          <View style={styles.pinContainer}>
+            <Feather name="shield" size={32} color={COLORS.brandBlue} style={{ marginBottom: SPACING.base }} />
+            <Text style={styles.pinTitle}>Administrative Access</Text>
+            <Text style={styles.pinSubtitle}>Enter your 4-digit PIN to continue</Text>
+
+            <TextInput
+              style={[styles.pinInput, error && styles.pinInputError]}
+              value={pin}
+              onChangeText={handlePinChange}
+              keyboardType="number-pad"
+              maxLength={4}
+              secureTextEntry
+              autoFocus
+              accessibilityLabel="Enter PIN"
+            />
+
+            {error && <Text style={styles.errorText}>Incorrect PIN. Please try again.</Text>}
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => { setShowPinAuth(false); setPin(''); setError(false); }}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
-      <View style={styles.footerContainer}>
-        <Text style={styles.footerAboutText}>
-          An intelligent symptom checker designed to provide rapid clinical triage and reliable health insights securely on your device.
-        </Text>
-        <Text style={styles.footerCopyrightText}>All Rights Reserved 2026 by Group 4</Text>
-      </View>
+      {/* ── Footer ── */}
+      <Text style={styles.footerCopyright}>© 2026 Group 4</Text>
+
     </SafeAreaView>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0FDF4', // Soft mint green background
+    backgroundColor: COLORS.bgPrimary,
     justifyContent: 'center',
-    padding: 24,
   },
-  header: {
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 48,
+    paddingHorizontal: SPACING.xl,
+  },
+
+  // ── Logo ─────────────────────────────────────────────────────────────────
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: SPACING.xxl,
   },
   logoImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 16,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: SPACING.md,
+    ...SHADOW.md,
   },
-  title: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: '#064E3B',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+  heroTitle: {
+    fontSize: TYPOGRAPHY.size.hero,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.brandNavy,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
     letterSpacing: -1,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#10B981',
-    fontWeight: '700',
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+
+  // ── Hero Text ─────────────────────────────────────────────────────────────
+  heroSection: {
+    alignItems: 'center',
+    marginBottom: SPACING.xxl,
+    paddingHorizontal: SPACING.sm,
   },
-  cardsContainer: {
-    width: '100%',
-    paddingHorizontal: 16, // Pulls the buttons inward to make the width noticeably smaller
-    alignSelf: 'center',
-    maxWidth: 400, // Prevents them from being too wide on tablets
+  heroHeading: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
-  cardSpacing: {
-    marginBottom: 20,
+  heroSubtext: {
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+
+  // ── Primary CTA ───────────────────────────────────────────────────────────
+  primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#D1FAE5',
-  },
-  cardHovered: {
-    backgroundColor: '#FAFAF9',
-    borderColor: '#A7F3D0',
-    shadowOpacity: 0.15,
-  },
-  cardPressed: {
-    transform: [{ scale: 0.98 }],
-    backgroundColor: '#F8FAFC',
-  },
-  cardIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#ECFDF5',
     justifyContent: 'center',
+    backgroundColor: COLORS.brandGreen,
+    borderRadius: RADIUS.pill,
+    paddingVertical: SPACING.base,
+    paddingHorizontal: SPACING.xxl,
+    width: '100%',
+    maxWidth: 340,
+    minHeight: 56,
+    ...SHADOW.md,
+  },
+  primaryBtnPressed: {
+    backgroundColor: COLORS.brandGreenDark,
+    transform: [{ scale: 0.97 }],
+  },
+  btnIcon: {
+    marginRight: SPACING.sm,
+  },
+  primaryBtnText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textOnGreen,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
+  },
+
+  // ── Privacy Badge ─────────────────────────────────────────────────────────
+  privacyRow: {
+    marginTop: SPACING.base,
+    marginBottom: SPACING.xxl,
+  },
+
+  // ── Admin Entry ───────────────────────────────────────────────────────────
+  adminSection: {
     alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
   },
-  cardIconContainerAdmin: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
+  adminLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.sm,
+    textAlign: 'center',
   },
-  cardImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  adminLink: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.base,
+    borderRadius: RADIUS.md,
   },
-  cardTextContainer: {
-    flex: 1,
+  adminLinkPressed: {
+    backgroundColor: COLORS.bgOverlay,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#064E3B',
-    marginBottom: 2,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
-    letterSpacing: -0.5,
+  adminLinkText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    color: COLORS.brandBlue,
   },
-  cardDescription: {
-    fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-  },
+
   pinContainer: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 32,
-    borderRadius: 20,
+    backgroundColor: COLORS.bgSurface,
+    padding: SPACING.xxl,
+    borderRadius: RADIUS.xl,
+    width: '100%',
+    maxWidth: 360,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 4,
+    borderColor: 'rgba(26, 58, 108, 0.04)',
+    ...SHADOW.md,
+    shadowOpacity: 0.04,
   },
   pinTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#064E3B',
-    marginBottom: 8,
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
   pinSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 24,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.xl,
+    textAlign: 'center',
   },
   pinInput: {
-    width: 120,
-    height: 60,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
-    fontSize: 32,
-    fontWeight: '800',
+    width: 200,
+    height: 64,
+    backgroundColor: COLORS.bgPrimary,
+    borderRadius: RADIUS.pill,
+    fontSize: 28,
+    fontWeight: TYPOGRAPHY.weight.bold,
     textAlign: 'center',
-    letterSpacing: 8,
-    color: '#0F172A',
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
+    letterSpacing: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26, 58, 108, 0.04)',
+    color: COLORS.textPrimary,
   },
   pinInputError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.errorBg,
   },
   errorText: {
-    color: '#EF4444',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
+    color: COLORS.error,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    marginTop: SPACING.md,
+    textAlign: 'center',
   },
   cancelButton: {
-    marginTop: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    marginTop: SPACING.xl,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.pill,
   },
   cancelButtonText: {
-    color: '#64748B',
-    fontSize: 16,
-    fontWeight: '600',
+    color: COLORS.textMuted,
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: TYPOGRAPHY.weight.semibold,
   },
-  footerContainer: {
-    position: 'absolute',
-    bottom: 32,
-    left: 24,
-    right: 24,
-    alignItems: 'center',
-  },
-  footerAboutText: {
-    fontSize: 11,
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 8,
-    lineHeight: 16,
-  },
-  footerCopyrightText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '700',
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  }
-});
 
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footerCopyright: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    paddingBottom: SPACING.base,
+    fontWeight: TYPOGRAPHY.weight.medium,
+  },
+});

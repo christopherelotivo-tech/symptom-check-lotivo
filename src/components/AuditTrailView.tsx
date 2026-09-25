@@ -1,91 +1,181 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AuditTrailEntry } from '../engine/types';
 import Accordion from './ui/Accordion';
+import { getFactLabel } from '../constants/factLabels';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../theme/tokens';
 
 interface AuditTrailViewProps {
   auditTrail: AuditTrailEntry[];
+  showTechnicalToggle?: boolean; // If false, never show the technical toggle (used for patient flow)
 }
 
-export default function AuditTrailView({ auditTrail }: AuditTrailViewProps) {
+export default function AuditTrailView({ auditTrail, showTechnicalToggle = false }: AuditTrailViewProps) {
+  const [showTechnical, setShowTechnical] = useState(false);
+
   if (auditTrail.length === 0) return null;
 
-  const reportedSymptoms = auditTrail.filter(e => e.type === 'USER_INPUT');
-  const activatedRules = auditTrail.filter(e => e.type === 'RULE_FIRED');
-  const derivedFacts = auditTrail.filter(e => e.type === 'FACT_DERIVED');
+  const activatedRules   = auditTrail.filter(e => e.type === 'RULE_FIRED');
+  const derivedFacts     = auditTrail.filter(e => e.type === 'FACT_DERIVED');
+
+  // Derived facts with approved translations (unknown = omit from patient view)
+  const translatedFacts = derivedFacts
+    .map(entry => {
+      const fact = (entry as any).fact as string;
+      const label = getFactLabel(fact);
+      return { entry, fact, label };
+    })
+    .filter(item => item.label !== null); // Unknown facts excluded from patient view
+
+  const rawRuleIds = activatedRules.map(e => (e as any).ruleId as string);
+  const rawFacts   = derivedFacts.map(e => `${(e as any).fact} = ${String((e as any).value)}`);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Clinical Execution Trace</Text>
-      
-      <Accordion title="Symptoms Reported" icon="user" defaultExpanded={true}>
-        {reportedSymptoms.length === 0 ? (
-          <Text style={styles.emptyText}>No symptoms reported.</Text>
-        ) : (
-          reportedSymptoms.map((entry, index) => (
-            <View key={entry.id} style={styles.row}>
-              <Feather name="check" size={16} color="#10B981" />
-              <Text style={styles.rowText}>{(entry as any).fact}</Text>
-            </View>
-          ))
-        )}
-      </Accordion>
+      <Text style={styles.sectionHeading}>How we reached this result</Text>
 
-      <Accordion title="Rules Activated" icon="cpu">
+      {/* Section: What the assessment considered */}
+      <Accordion title="What the assessment considered" icon="layers" defaultExpanded={true}>
         {activatedRules.length === 0 ? (
-          <Text style={styles.emptyText}>No clinical rules triggered.</Text>
+          <Text style={styles.emptyText}>No clinical patterns matched your reported symptoms.</Text>
         ) : (
-          activatedRules.map((entry, index) => (
-            <View key={entry.id} style={styles.row}>
-              <Feather name="zap" size={16} color="#F59E0B" />
-              <Text style={styles.rowText}>Rule ID: {(entry as any).ruleId}</Text>
-            </View>
-          ))
+          <View style={styles.row}>
+            <Feather name="check-circle" size={15} color={COLORS.brandGreen} style={styles.icon} />
+            <Text style={styles.rowText}>
+              We compared your symptoms and context against{' '}
+              <Text style={styles.rowTextBold}>
+                {activatedRules.length} clinical safety guideline{activatedRules.length !== 1 ? 's' : ''}
+              </Text>
+              {' '}in our medical knowledge base.
+            </Text>
+          </View>
         )}
       </Accordion>
 
-      <Accordion title="Derived Medical Facts" icon="database">
-        {derivedFacts.length === 0 ? (
-          <Text style={styles.emptyText}>No new facts derived.</Text>
-        ) : (
-          derivedFacts.map((entry, index) => (
+      {/* Section: Why this result was reached */}
+      {translatedFacts.length > 0 && (
+        <Accordion title="Why this result was reached" icon="activity" defaultExpanded={true}>
+          <Text style={[styles.rowText, { marginBottom: SPACING.md }]}>
+            Based on the guidelines, we identified the following clinical indicators:
+          </Text>
+          {translatedFacts.map(({ entry, label }) => (
             <View key={entry.id} style={styles.row}>
-              <Feather name="file-text" size={16} color="#3B82F6" />
-              <Text style={styles.rowText}>{(entry as any).fact} = true</Text>
+              <Feather name="arrow-right" size={15} color={COLORS.brandCyan} style={styles.icon} />
+              <Text style={styles.rowText}>{label}</Text>
             </View>
-          ))
-        )}
-      </Accordion>
+          ))}
+        </Accordion>
+      )}
+
+      {/* Technical details (opt-in, disabled in patient view if false) */}
+      {showTechnicalToggle && (
+        <>
+          <Pressable
+            style={styles.technicalToggle}
+            onPress={() => setShowTechnical(prev => !prev)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.technicalToggleText}>
+              {showTechnical ? '▲ Hide technical trace' : '▼ Show technical trace'}
+            </Text>
+          </Pressable>
+
+          {showTechnical && (
+            <View style={styles.technicalBox}>
+              <Text style={styles.technicalLabel}>RULE IDs FIRED</Text>
+              {rawRuleIds.length === 0 ? (
+                <Text style={styles.technicalValue}>None</Text>
+              ) : (
+                rawRuleIds.map((id, i) => (
+                  <Text key={i} style={styles.technicalValue}>{id}</Text>
+                ))
+              )}
+              {rawFacts.length > 0 && (
+                <>
+                  <Text style={[styles.technicalLabel, { marginTop: SPACING.sm }]}>DERIVED FACTS</Text>
+                  {rawFacts.map((f, i) => (
+                    <Text key={i} style={styles.technicalValue}>{f}</Text>
+                  ))}
+                </>
+              )}
+            </View>
+          )}
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 16,
-    letterSpacing: -0.5,
+  sectionHeading: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.brandNavy,
+    marginBottom: SPACING.md,
+    letterSpacing: -0.3,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
   emptyText: {
-    color: '#94A3B8',
+    color: COLORS.textMuted,
     fontStyle: 'italic',
-    paddingTop: 16,
+    paddingTop: SPACING.md,
+    fontSize: TYPOGRAPHY.size.sm,
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 16,
+    alignItems: 'flex-start',
+    marginBottom: SPACING.xs,
+  },
+  icon: {
+    marginRight: SPACING.sm,
+    marginTop: 2,
   },
   rowText: {
-    fontSize: 15,
-    color: '#334155',
-    marginLeft: 12,
-    fontWeight: '500',
-  }
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textSecondary,
+    fontWeight: TYPOGRAPHY.weight.medium,
+    flex: 1,
+    lineHeight: 22,
+  },
+  rowTextBold: {
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textPrimary,
+  },
+  technicalToggle: {
+    alignSelf: 'flex-start',
+    marginTop: SPACING.xl,
+    paddingVertical: SPACING.sm,
+  },
+  technicalToggleText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textMuted,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    textTransform: 'uppercase',
+  },
+  technicalBox: {
+    backgroundColor: COLORS.brandNavy,
+    borderRadius: RADIUS.md,
+    padding: SPACING.base,
+    marginTop: SPACING.sm,
+  },
+  technicalLabel: {
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.brandCyan,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: SPACING.xs,
+    fontFamily: TYPOGRAPHY.fontFamily.mono,
+  },
+  technicalValue: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: '#A5F3FC',
+    fontFamily: TYPOGRAPHY.fontFamily.mono,
+    marginBottom: SPACING.xs,
+  },
 });

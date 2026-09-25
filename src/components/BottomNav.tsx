@@ -1,79 +1,84 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Platform, SafeAreaView, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Platform,
+  SafeAreaView,
+  Animated,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
 
 export interface TabConfig<T extends string> {
   id: T;
   label: string;
-  icon: any; // Feather icon name
+  icon: any;
 }
 
 interface BottomNavProps<T extends string> {
   tabs: TabConfig<T>[];
   activeTab: T;
   onTabChange: (tabId: T) => void;
+  badgeCounts?: Partial<Record<T, number>>;
 }
 
-// ---------------------------------------------------------------------------
-// Animated Tab Item
-// ---------------------------------------------------------------------------
-
-function AnimatedTab({ tab, isActive, onPress }: { tab: TabConfig<any>; isActive: boolean; onPress: () => void }) {
-  const anim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.timing(anim, {
-      toValue: isActive ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false, // Color interpolation requires JS driver
-    }).start();
-  }, [isActive]);
-
-  const backgroundColor = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(16, 185, 129, 0)', 'rgba(16, 185, 129, 1)'] // Smooth transition to Emerald Green
-  });
-
-  const contentColor = isActive ? '#FFFFFF' : '#94A3B8';
+function AnimatedTab({
+  tab,
+  isActive,
+  onPress,
+  badgeCount,
+}: {
+  tab: TabConfig<any>;
+  isActive: boolean;
+  onPress: () => void;
+  badgeCount?: number;
+}) {
+  const contentColor = isActive ? COLORS.textOnGreen : COLORS.textMuted;
 
   return (
     <Pressable
-      style={(state: any) => [
+      style={[
         styles.tabWrapper,
-        state.hovered && !isActive && styles.tabHovered,
-        state.pressed && styles.tabPressed
+        isActive && styles.tabActive
       ]}
       onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel={tab.label}
     >
-      <Animated.View style={[styles.tabBackground, { backgroundColor }]}>
-        <Feather 
-          name={tab.icon} 
-          size={20} 
-          color={contentColor}
-          style={styles.iconSpacing}
-        />
-        <Text style={[styles.label, { color: contentColor }]}>
-          {tab.label}
-        </Text>
-      </Animated.View>
+      <View style={styles.iconWrapper}>
+        <Feather name={tab.icon} size={20} color={contentColor} />
+        {badgeCount !== undefined && badgeCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badgeCount}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={[styles.label, { color: contentColor }]}>
+        {tab.label}
+      </Text>
     </Pressable>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------------------
-
-export default function BottomNav<T extends string>({ tabs, activeTab, onTabChange }: BottomNavProps<T>) {
+export default function BottomNav<T extends string>({
+  tabs,
+  activeTab,
+  onTabChange,
+  badgeCounts,
+}: BottomNavProps<T>) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {tabs.map((tab) => (
-          <AnimatedTab 
-            key={tab.id} 
-            tab={tab} 
-            isActive={activeTab === tab.id} 
-            onPress={() => onTabChange(tab.id)} 
+          <AnimatedTab
+            key={tab.id}
+            tab={tab}
+            isActive={activeTab === tab.id}
+            onPress={() => onTabChange(tab.id)}
+            badgeCount={badgeCounts?.[tab.id]}
           />
         ))}
       </View>
@@ -83,45 +88,63 @@ export default function BottomNav<T extends string>({ tabs, activeTab, onTabChan
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 8,
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 24 : 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    pointerEvents: 'box-none',
   },
   container: {
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 56 : 64, // Base height before safe area
-    backgroundColor: '#FFFFFF',
+    height: 64,
+    backgroundColor: COLORS.bgSurface,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...SHADOW.md,
+    shadowOpacity: 0.1,
+    minWidth: 280, // Enough space for tabs
   },
   tabWrapper: {
-    flex: 1,
-    marginHorizontal: 8,
-    marginVertical: 6,
-    borderRadius: 14,
-  },
-  tabBackground: {
-    flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'column',
     alignItems: 'center',
-    borderRadius: 14,
-    paddingVertical: 4,
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.lg,
+    height: 52,
+    borderRadius: RADIUS.pill,
   },
-  tabHovered: {
-    backgroundColor: '#F8FAFC',
+  tabActive: {
+    backgroundColor: COLORS.brandGreen,
   },
-  tabPressed: {
-    transform: [{ scale: 0.94 }],
+  iconWrapper: {
+    position: 'relative',
+    marginBottom: 2,
   },
-  iconSpacing: {
-    marginBottom: 4,
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: COLORS.error,
+    borderRadius: RADIUS.pill,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textOnNavy,
   },
   label: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
-  }
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
+    letterSpacing: 0.2,
+  },
 });

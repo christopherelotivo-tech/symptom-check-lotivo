@@ -14,6 +14,9 @@ import {
 import { addCustomRule, getAllRules } from '../database/DatabaseService';
 import { RuleValidator } from '../engine/RuleValidator';
 import { Rule, RuleCondition } from '../engine/types';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
+import ClinicalFactSelector from './ui/ClinicalFactSelector';
+import PrimaryButton from './ui/PrimaryButton';
 
 // ---------------------------------------------------------------------------
 // Reusable UI Components
@@ -127,8 +130,8 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
   const handleSaveRule = async () => {
     // Basic structural validation
     if (!ruleId.trim()) return Alert.alert('Error', 'Rule ID is required.');
-    if (antecedents.some(a => !a.fact.trim())) return Alert.alert('Error', 'All IF conditions must have a fact name.');
-    if (!consequentFact.trim()) return Alert.alert('Error', 'THEN fact is required.');
+    if (antecedents.some(a => !a.fact.trim())) return Alert.alert('Error', 'All When... conditions must have an observation name.');
+    if (!consequentFact.trim()) return Alert.alert('Error', 'Clinical Conclusion is required.');
     if (!triageAdvice.trim()) return Alert.alert('Error', 'Triage Advice is required.');
     if (isNaN(Number(priority))) return Alert.alert('Error', 'Priority must be a valid number.');
 
@@ -188,112 +191,17 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
           Create new clinical inference rules.
         </Text>
 
-        {/* 1. Rule ID */}
+        {/* 1. Clinical Definition */}
         <View style={styles.section}>
-          <Text style={styles.label}>Rule ID (Unique identifier)</Text>
+          <Text style={styles.sectionTitle}>Clinical Definition</Text>
+          <Text style={styles.label}>Internal Description</Text>
           <TextInput
-            style={styles.input}
-            placeholder="e.g., SEVERE_FEVER_RISK"
-            value={ruleId}
-            onChangeText={setRuleId}
-            autoCapitalize="characters"
+            style={[styles.input, styles.textArea]}
+            placeholder="e.g., Severe Respiratory Assessment"
+            multiline
+            value={description}
+            onChangeText={setDescription}
           />
-        </View>
-
-        {/* 2. Antecedents (IF) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>IF (Conditions)</Text>
-          {antecedents.map((cond, index) => (
-            <View key={index} style={styles.conditionCard}>
-              <View style={styles.conditionHeader}>
-                <Text style={styles.conditionBadge}>Condition {index + 1}</Text>
-                {antecedents.length > 1 && (
-                  <Pressable onPress={() => handleRemoveCondition(index)}>
-                    <Text style={styles.removeText}>Remove</Text>
-                  </Pressable>
-                )}
-              </View>
-
-              <Text style={styles.label}>Fact Name (e.g., fever)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Fact key..."
-                value={cond.fact}
-                onChangeText={val => handleUpdateCondition(index, { fact: val })}
-                autoCapitalize="none"
-              />
-
-              <View style={styles.row}>
-                <View style={styles.flex1}>
-                  <Text style={styles.label}>Operator</Text>
-                  <SegmentedControl
-                    options={[
-                      { label: '==', value: 'EQUALS' },
-                      { label: '!=', value: 'NOT_EQUALS' },
-                    ]}
-                    value={cond.operator}
-                    onChange={val => handleUpdateCondition(index, { operator: val })}
-                  />
-                </View>
-                <View style={styles.flex1}>
-                  <Text style={styles.label}>Value</Text>
-                  <SegmentedControl
-                    options={[
-                      { label: 'TRUE', value: true },
-                      { label: 'FALSE', value: false },
-                    ]}
-                    value={cond.value}
-                    onChange={val => handleUpdateCondition(index, { value: val })}
-                  />
-                </View>
-              </View>
-            </View>
-          ))}
-          <Pressable style={styles.addButton} onPress={handleAddCondition}>
-            <Text style={styles.addButtonText}>+ Add Condition (AND)</Text>
-          </Pressable>
-        </View>
-
-        {/* 3. Consequent (THEN) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>THEN (Derived Fact)</Text>
-          <View style={styles.thenCard}>
-            <Text style={styles.label}>Derived Fact Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., possible_infection"
-              value={consequentFact}
-              onChangeText={setConsequentFact}
-              autoCapitalize="none"
-            />
-            <Text style={styles.label}>Assigned Value</Text>
-            <SegmentedControl
-              options={[
-                { label: 'TRUE', value: true },
-                { label: 'FALSE', value: false },
-              ]}
-              value={consequentValue}
-              onChange={setConsequentValue}
-            />
-          </View>
-        </View>
-
-        {/* 4. Metadata */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Action Payload (Metadata)</Text>
-          
-          <View style={styles.row}>
-            <View style={styles.flex1}>
-              <Text style={styles.label}>Priority Score</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="10"
-                keyboardType="numeric"
-                value={priority}
-                onChangeText={setPriority}
-              />
-            </View>
-          </View>
 
           <Text style={styles.label}>Risk Category</Text>
           <SegmentedControl
@@ -306,7 +214,7 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
             onChange={setRiskCategory}
           />
 
-          <Text style={[styles.label, { marginTop: 12 }]}>Triage Advice Template</Text>
+          <Text style={[styles.label, { marginTop: SPACING.md }]}>Triage Advice</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Advice to show the user..."
@@ -314,20 +222,95 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
             value={triageAdvice}
             onChangeText={setTriageAdvice}
           />
+        </View>
 
-          <Text style={styles.label}>Internal Description</Text>
+        {/* 2. Clinical Triggers */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Clinical Triggers</Text>
+          
+          <Text style={styles.label}>When...</Text>
+          {antecedents.map((cond, index) => (
+            <View key={index} style={styles.conditionCard}>
+              <View style={styles.conditionHeader}>
+                <Text style={styles.conditionBadge}>Condition {index + 1}</Text>
+                {antecedents.length > 1 && (
+                  <Pressable onPress={() => handleRemoveCondition(index)}>
+                    <Text style={styles.removeText}>Remove</Text>
+                  </Pressable>
+                )}
+              </View>
+
+              <ClinicalFactSelector
+                value={cond.fact}
+                onChange={val => handleUpdateCondition(index, { fact: val })}
+              />
+
+              <View style={styles.row}>
+                <View style={styles.flex1}>
+                  <Text style={styles.label}>Status</Text>
+                  <SegmentedControl
+                    options={[
+                      { label: 'Is present', value: 'present' },
+                      { label: 'Is absent', value: 'absent' },
+                    ]}
+                    value={cond.operator === 'EQUALS' && cond.value === false ? 'absent' : 'present'}
+                    onChange={val => {
+                      if (val === 'present') {
+                        handleUpdateCondition(index, { operator: 'EQUALS', value: true });
+                      } else {
+                        handleUpdateCondition(index, { operator: 'EQUALS', value: false });
+                      }
+                    }}
+                  />
+                </View>
+              </View>
+            </View>
+          ))}
+          <Pressable style={styles.addButton} onPress={handleAddCondition}>
+            <Text style={styles.addButtonText}>+ Add Condition</Text>
+          </Pressable>
+
+          <Text style={[styles.label, { marginTop: SPACING.xl }]}>Clinical Conclusion</Text>
+          <View style={styles.thenCard}>
+            <Text style={styles.label}>Clinical Conclusion</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., possible_infection"
+              value={consequentFact}
+              onChangeText={setConsequentFact}
+              autoCapitalize="none"
+            />
+          </View>
+        </View>
+
+        {/* 3. System Configuration */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>System Configuration (Advanced)</Text>
+          
+          <Text style={styles.label}>System Rule ID</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Why does this rule exist?"
-            multiline
-            value={description}
-            onChangeText={setDescription}
+            style={styles.input}
+            placeholder="e.g., SEVERE_FEVER_RISK"
+            value={ruleId}
+            onChangeText={setRuleId}
+            autoCapitalize="characters"
+          />
+          
+          <Text style={styles.label}>Priority Score</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="10"
+            keyboardType="numeric"
+            value={priority}
+            onChangeText={setPriority}
           />
         </View>
 
-        <Pressable style={styles.saveButton} onPress={handleSaveRule}>
-          <Text style={styles.saveButtonText}>Save Rule</Text>
-        </Pressable>
+        <PrimaryButton
+          label="Save Guideline"
+          onPress={handleSaveRule}
+          iconName="save"
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -337,21 +320,10 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
 // Styles
 // ---------------------------------------------------------------------------
 
-const COLORS = {
-  background: '#F0FDF4', // Soft mint to match app bg
-  card: '#FFFFFF',
-  border: '#D1FAE5',
-  primary: '#10B981', // Emerald
-  text: '#064E3B', // Deep forest green
-  muted: '#64748B',
-  danger: '#EF4444',
-  segmentBg: '#ECFDF5',
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.bgPrimary,
   },
   center: {
     flex: 1,
@@ -359,181 +331,170 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
-    padding: 24,
+    padding: SPACING.xl,
     paddingBottom: 40,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.text,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    fontSize: TYPOGRAPHY.size.xxl,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.brandNavy,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
     letterSpacing: -0.5,
   },
   headerSub: {
-    fontSize: 16,
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginBottom: 24,
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.brandBlue,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    marginBottom: SPACING.xl,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.md,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 6,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.bgSurface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#0F172A',
-    marginBottom: 12,
+    borderColor: COLORS.borderLight,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.md,
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.md,
   },
   textArea: {
     minHeight: 80,
     textAlignVertical: 'top',
   },
   conditionCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.bgSurface,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: 'rgba(26, 58, 108, 0.04)',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    ...SHADOW.md,
+    shadowOpacity: 0.04,
   },
   thenCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.bgSurface,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: 'rgba(26, 58, 108, 0.04)',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    ...SHADOW.md,
+    shadowOpacity: 0.04,
   },
   conditionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 16,
+    marginBottom: SPACING.base,
+    paddingBottom: SPACING.base,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.borderLight,
   },
   conditionBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.primary,
-    backgroundColor: '#ECFDF5',
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.brandBlue,
+    backgroundColor: COLORS.bgPrimary,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     overflow: 'hidden',
   },
   removeText: {
-    color: COLORS.danger,
-    fontSize: 12,
-    fontWeight: '700',
+    color: COLORS.error,
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.bold,
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   flex1: {
     flex: 1,
   },
   addButton: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: COLORS.bgPrimary,
     borderWidth: 1,
-    borderColor: '#10B981',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderColor: COLORS.brandBlue,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md,
     alignItems: 'center',
     borderStyle: 'dashed',
   },
   addButtonText: {
-    color: COLORS.primary,
-    fontWeight: '700',
-    fontSize: 14,
+    color: COLORS.brandBlue,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    fontSize: TYPOGRAPHY.size.sm,
   },
   saveButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: COLORS.brandGreen,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.base,
     alignItems: 'center',
-    marginTop: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: SPACING.sm,
+    ...SHADOW.md,
+  },
+  saveButtonPressed: {
+    backgroundColor: COLORS.brandGreenDark,
   },
   saveButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
+    color: COLORS.textOnGreen,
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
     letterSpacing: 0.5,
   },
 
   // Segmented Control Styles
   segmentContainer: {
     flexDirection: 'row',
-    backgroundColor: COLORS.segmentBg,
-    borderRadius: 12,
+    backgroundColor: COLORS.bgSurface2,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 12,
+    borderColor: COLORS.borderLight,
+    marginBottom: SPACING.md,
     overflow: 'hidden',
     padding: 4,
   },
   segmentButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: SPACING.sm,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
   },
   segmentFirst: {
   },
   segmentLast: {
   },
   segmentButtonActive: {
-    backgroundColor: COLORS.card,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: COLORS.bgSurface,
+    ...SHADOW.sm,
   },
   segmentText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94A3B8',
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    color: COLORS.textMuted,
   },
   segmentTextActive: {
-    color: COLORS.primary,
-    fontWeight: '700',
+    color: COLORS.brandNavy,
+    fontWeight: TYPOGRAPHY.weight.bold,
   },
 });

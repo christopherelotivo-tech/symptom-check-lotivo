@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Platform,
   Pressable,
   SafeAreaView,
@@ -12,7 +11,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-import { InferenceEngine }     from '../engine/InferenceEngine';
+// ── Engine (DO NOT TOUCH) ────────────────────────────────────────────────────
+import { InferenceEngine }   from '../engine/InferenceEngine';
 import {
   AuditTrailEntry,
   Rule,
@@ -22,25 +22,31 @@ import {
   WorkingMemory,
 } from '../engine/types';
 import { initDatabase, loadUnifiedRules } from '../database/DatabaseService';
-import SymptomForm   from '../components/SymptomForm';
-import TriageCard    from '../components/TriageCard';
+// ─────────────────────────────────────────────────────────────────────────────
+
+import SymptomForm, { SYMPTOM_CATEGORIES } from '../components/SymptomForm';
+import TriageCard     from '../components/TriageCard';
 import AuditTrailView from '../components/AuditTrailView';
+import SeverityGauge  from '../components/SeverityGauge';
+import BottomNav      from '../components/BottomNav';
+import NextStepCard   from '../components/ui/NextStepCard';
+import Disclaimer     from '../components/ui/Disclaimer';
+import SymptomContextCard from '../components/SymptomContextCard';
+import PatientSymptomSummary from '../components/PatientSymptomSummary';
+import PrimaryButton from '../components/ui/PrimaryButton';
+import LoadingState from '../components/ui/LoadingState';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
 
 // ---------------------------------------------------------------------------
-// Risk-rank helper (Red beats Amber beats Green)
+// Risk-rank helper (DO NOT TOUCH — engine logic)
 // ---------------------------------------------------------------------------
 
 const RISK_RANK: Record<string, number> = { Red: 3, Amber: 2, Green: 1 };
 
-/**
- * Derives a single TriageResult from the engine's full audit trail.
- *
- * Selects the highest-risk rule that fired (Red > Amber > Green),
- * breaking ties by priority. Returns null when no rules fired.
- */
 function deriveTriageResult(
   auditTrail: AuditTrailEntry[],
-  rules: Rule[]
+  rules: Rule[],
+  memory: WorkingMemory
 ): TriageResult | null {
   const overrideEntry = auditTrail.find(e => e.type === 'AGGREGATE_SEVERITY_OVERRIDE') as any;
 
@@ -51,13 +57,25 @@ function deriveTriageResult(
   if (overrideEntry) {
     return {
       riskCategory: overrideEntry.newRiskCategory,
-      triageAdvice: `We noticed a combination of severe symptoms. Please seek clinical evaluation immediately.`,
-      description: `Your combined symptom severity score reached ${overrideEntry.aggregateScore.toFixed(1)}, triggering an automatic safety escalation.`,
+      triageAdvice: 'We noticed a combination of severe symptoms. Please seek clinical evaluation immediately.',
+      description:  'Your combined symptoms triggered an automatic safety escalation. Please do not ignore this result.',
       firedRuleIds,
     };
   }
 
-  if (firedRuleIds.length === 0) return null;
+  if (firedRuleIds.length === 0) {
+    // Fallback: If no rules fired but the user did report symptoms, default to Green.
+    const hasSymptoms = Object.values(memory).some(m => m.value);
+    if (hasSymptoms) {
+      return {
+        riskCategory: 'Green',
+        triageAdvice: 'Your symptoms appear to be safe. Rest, stay hydrated, and monitor your condition. Consult a healthcare professional if symptoms worsen.',
+        description:  'No severe risk patterns were detected based on your reported symptoms.',
+        firedRuleIds: []
+      };
+    }
+    return null;
+  }
 
   const ruleMap = new Map(rules.map(r => [r.id, r]));
 
@@ -81,11 +99,6 @@ function deriveTriageResult(
   };
 }
 
-/**
- * Builds the initial USER_INPUT audit trail entries from current Working Memory.
- * Only facts that are explicitly set to `true` are recorded (absent symptoms
- * are not clinically interesting).
- */
 function buildUserInputEntries(memory: WorkingMemory): UserInputAuditEntry[] {
   return Object.entries(memory)
     .filter(([, state]) => state.value === true)
@@ -99,110 +112,175 @@ function buildUserInputEntries(memory: WorkingMemory): UserInputAuditEntry[] {
 }
 
 // ---------------------------------------------------------------------------
-// Tab type
-import SeverityGauge from '../components/SeverityGauge';
-
-import BottomNav from '../components/BottomNav';
-
-// ---------------------------------------------------------------------------
-// Type & Config
+// Types
 // ---------------------------------------------------------------------------
 
-type TabState = 'SYMPTOMS' | 'RESULTS';
+type WizardStep = 'SYMPTOMS' | 'CONTEXT' | 'ANALYZING' | 'RESULTS';
 
 interface UserAssessmentScreenProps {
   onSwitchToWelcome: () => void;
 }
 
+const getSymptomLabel = (factKey: string) => {
+  for (const cat of SYMPTOM_CATEGORIES) {
+    const sym = cat.symptoms.find(s => s.factKey === factKey);
+    if (sym) return sym.label;
+  }
+  return factKey;
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+import { SymptomAssessment, mapAssessmentsToMemory } from '../utils/ContextMapper';
+
 export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessmentScreenProps) {
-  // ── Core state ───────────────────────────────────────────────────────────
   const [rules,        setRules]        = useState<Rule[]>([]);
-  const [memory,       setMemory]       = useState<WorkingMemory>({});
+  
+  // Phase 1: New Data Architecture
+  const [assessments,  setAssessments]  = useState<Record<string, SymptomAssessment>>({});
+  const [activeStep,   setActiveStep]   = useState<WizardStep>('SYMPTOMS');
+  
   const [auditTrail,   setAuditTrail]   = useState<AuditTrailEntry[]>([]);
   const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
 
-  // ── UI state ─────────────────────────────────────────────────────────────
-  const [activeTab,    setActiveTab]    = useState<TabState>('SYMPTOMS');
-  const [isLoading,    setIsLoading]    = useState<boolean>(true);
-  const [loadError,    setLoadError]    = useState<string | null>(null);
+  const [isLoading,  setIsLoading]  = useState<boolean>(true);
+  const [loadError,  setLoadError]  = useState<string | null>(null);
 
-  // Memoised engine instance — rebuilt only when the rule set changes.
+  // Derived working memory using ContextMapper
+  const memory = useMemo(() => mapAssessmentsToMemory(Object.values(assessments)), [assessments]);
+
   const engineRef = useRef<InferenceEngine | null>(null);
   useMemo(() => {
     engineRef.current = rules.length > 0 ? new InferenceEngine(rules) : null;
   }, [rules]);
 
-  // ── 1. On mount: initialise DB and load rules ────────────────────────────
+  // ── DB init (DO NOT TOUCH) ─────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
-
     async function bootstrap() {
       try {
         await initDatabase();
         const loaded = await loadUnifiedRules();
-        if (!cancelled) {
-          setRules(loaded);
-          setIsLoading(false);
-        }
+        if (!cancelled) { setRules(loaded); setIsLoading(false); }
       } catch (err) {
         if (!cancelled) {
-          setLoadError(
-            err instanceof Error ? err.message : 'Failed to load rules.'
-          );
+          setLoadError(err instanceof Error ? err.message : 'Failed to load assessment data.');
           setIsLoading(false);
         }
       }
     }
-
     bootstrap();
     return () => { cancelled = true; };
   }, []);
 
-  // ── 2. Re-evaluate whenever Working Memory changes ────────────────────────
+  // ── Evaluation (DO NOT TOUCH) ──────────────────────────────────────────────
   const runEvaluation = useCallback(
-    (nextMemory: WorkingMemory, currentRules: Rule[]) => {
+    async (nextMemory: WorkingMemory, currentRules: Rule[]) => {
       const engine = engineRef.current;
-      if (!engine || currentRules.length === 0) return;
+      if (!engine) return;
 
-      // Seed the audit trail with USER_INPUT entries first.
-      const userInputs = buildUserInputEntries(nextMemory);
+      const userInputs: UserInputAuditEntry[] = Object.entries(nextMemory)
+        .filter(([_, fact]) => fact.value !== undefined)
+        .map(([key, fact]) => ({
+          id: Math.random().toString(),
+          timestamp: Date.now(),
+          type: 'USER_INPUT',
+          fact: key,
+          value: fact.value!
+        }));
+
       const result = engine.evaluate(nextMemory, userInputs);
-
+      const triage = deriveTriageResult(result.auditTrail, currentRules, nextMemory);
+      
       setAuditTrail(result.auditTrail);
-      setTriageResult(deriveTriageResult(result.auditTrail, currentRules));
+      setTriageResult(triage);
+      
+      // Save history
+      if (triage) {
+        import('../services/HistoryService').then(({ saveAssessmentHistory }) => {
+          const symptomsList = Object.keys(nextMemory).filter(k => nextMemory[k].value === true);
+          saveAssessmentHistory(symptomsList, triage, result.auditTrail);
+        });
+      }
     },
     []
   );
 
-  // ── 3. Symptom toggle handler ─────────────────────────────────────────────
   const handleToggle = useCallback(
     (fact: string, value: boolean, weight: number) => {
-      setMemory(prev => {
-        const nextMemory = { ...prev, [fact]: { value, weight } };
-        // Evaluate immediately after mutating Working Memory.
-        runEvaluation(nextMemory, rules);
-        return nextMemory;
+      setAssessments(prev => {
+        const next = { ...prev };
+        if (value) {
+          next[fact] = { ...(next[fact] || { factKey: fact, weight }), active: true };
+        } else {
+          if (next[fact]) {
+            next[fact] = { ...next[fact], active: false };
+          }
+        }
+        return next;
       });
     },
-    [rules, runEvaluation]
+    []
   );
 
-  // ── Tab change — auto-switch to Results when engine fires rules ───────────
-  const handleTabChange = useCallback((tab: TabState) => {
-    setActiveTab(tab);
+  const handleContextChange = useCallback(
+    (fact: string, field: 'durationCode' | 'severityCode', value: string) => {
+      setAssessments(prev => {
+        const next = { ...prev };
+        if (next[fact]) {
+          next[fact] = { ...next[fact], [field]: value };
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const handleNextStep = () => {
+    if (activeStep === 'SYMPTOMS') {
+      const hasSymptoms = Object.values(assessments).some(a => a.active);
+      if (hasSymptoms) setActiveStep('CONTEXT');
+      else setActiveStep('ANALYZING');
+    } else if (activeStep === 'CONTEXT') {
+      setActiveStep('ANALYZING');
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (activeStep === 'RESULTS') setActiveStep('SYMPTOMS');
+    else if (activeStep === 'CONTEXT') setActiveStep('SYMPTOMS');
+  };
+
+  const handleResetAssessment = useCallback(() => {
+    setAssessments({});
+    setTriageResult(null);
+    setAuditTrail([]);
+    setActiveStep('SYMPTOMS');
   }, []);
 
-  // Unread results badge: show when on Symptoms tab and results are available.
-  const hasResults      = triageResult !== null;
-  const showResultsBadge = activeTab === 'SYMPTOMS' && hasResults;
+  // Run evaluation when moving to ANALYZING step
+  useEffect(() => {
+    if (activeStep === 'ANALYZING') {
+      const timer = setTimeout(() => {
+        runEvaluation(memory, rules);
+        setActiveStep('RESULTS');
+      }, 1000); // 1 second trust-building delay
+      return () => clearTimeout(timer);
+    }
+  }, [activeStep, memory, rules, runEvaluation]);
+  // ─────────────────────────────────────────────────────────────────────────
 
-  // ── Loading / error states ────────────────────────────────────────────────
-  if (isLoading) {
+  const hasResults      = triageResult !== null;
+  const selectedCount   = Object.values(memory).filter(f => f.value && f.weight > 0).length;
+
+  // ── Loading state ─────────────────────────────────────────────────────────
+  if (isLoading || activeStep === 'ANALYZING') {
     return (
-      <SafeAreaView style={[styles.root, styles.centred]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Loading clinical rules…</Text>
-      </SafeAreaView>
+      <LoadingState 
+        message={activeStep === 'ANALYZING' ? 'Evaluating your symptoms...' : 'Preparing your assessment…'}
+      />
     );
   }
 
@@ -210,7 +288,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessme
     return (
       <SafeAreaView style={[styles.root, styles.centred]}>
         <Text style={styles.errorIcon}>⚠</Text>
-        <Text style={styles.errorTitle}>Could not load rules</Text>
+        <Text style={styles.errorTitle}>Unable to start assessment</Text>
         <Text style={styles.errorBody}>{loadError}</Text>
       </SafeAreaView>
     );
@@ -219,89 +297,133 @@ export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessme
   // ── Main render ───────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.root}>
-      {/* ── Header ───────────────────────────────────────────────── */}
+      {/* ── Header ── */}
       <View style={styles.header}>
+        {activeStep !== 'SYMPTOMS' && (
+          <Pressable 
+            style={styles.backBtn}
+            onPress={handlePrevStep}
+            accessibilityRole="button"
+          >
+            <Feather name="arrow-left" size={20} color={COLORS.brandNavy} />
+          </Pressable>
+        )}
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>ArayKo!</Text>
-          <Text style={styles.headerSubtitle}>Symptom Assessment</Text>
+          <Text style={styles.headerSubtitle}>
+            {activeStep === 'RESULTS' ? 'Your Assessment' : 'Symptom Check'}
+          </Text>
         </View>
-        <Pressable 
+        <Pressable
           style={(state: any) => [
             styles.homeBtn,
             state.hovered && styles.homeBtnHovered,
-            state.pressed && styles.homeBtnPressed
-          ]} 
+            state.pressed && styles.homeBtnPressed,
+          ]}
           onPress={onSwitchToWelcome}
+          accessibilityRole="button"
           accessibilityLabel="Back to Home"
         >
-          <Feather name="home" size={22} color="#059669" />
+          <Feather name="home" size={20} color={COLORS.brandNavy} />
         </Pressable>
       </View>
 
-      {/* ── Tab content ──────────────────────────────────────────── */}
+      {/* ── Content ── */}
       <View style={styles.content}>
-        {activeTab === 'SYMPTOMS' ? (
+        {activeStep === 'SYMPTOMS' && (
           <View style={styles.symptomsContent}>
-            <SeverityGauge memory={memory} />
-            <SymptomForm
-              memory={memory}
-              onToggle={handleToggle}
+            {selectedCount > 0 && (
+              <View 
+                style={styles.counterBanner} 
+                accessibilityLiveRegion="polite"
+              >
+                <Feather name="check-circle" size={14} color={COLORS.brandGreen} />
+                <Text style={styles.counterText}>
+                  {selectedCount} symptom{selectedCount !== 1 ? 's' : ''} selected
+                </Text>
+              </View>
+            )}
+            <SymptomForm memory={memory} onToggle={handleToggle} />
+            <PrimaryButton 
+              label="Next"
+              onPress={handleNextStep}
+              disabled={selectedCount === 0}
+              style={{ marginHorizontal: SPACING.xl, marginBottom: SPACING.xxxl }}
             />
           </View>
-        ) : (
+        )}
+
+        {activeStep === 'CONTEXT' && (
+          <View style={styles.symptomsContent}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: SPACING.xl, paddingBottom: SPACING.xxxl }}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.formTitle}>Tell us a bit more.</Text>
+              <Text style={styles.formSubtitle}>
+                This helps us give you a more accurate result. All questions below are optional.
+              </Text>
+
+              {Object.values(assessments)
+                .filter(a => a.active)
+                .map(a => (
+                  <SymptomContextCard
+                    key={a.factKey}
+                    factKey={a.factKey}
+                    symptomName={getSymptomLabel(a.factKey)}
+                    assessment={a}
+                    onChange={handleContextChange}
+                  />
+                ))}
+            </ScrollView>
+
+            <PrimaryButton 
+              label="Analyze Symptoms"
+              onPress={handleNextStep}
+              style={{ marginHorizontal: SPACING.xl, marginBottom: SPACING.xl }}
+            />
+          </View>
+        )}
+
+        {activeStep === 'RESULTS' && (
           <ScrollView
             style={styles.resultsScroll}
             contentContainerStyle={styles.resultsContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Triage result card */}
+            {/* 1. Triage Summary */}
+            {selectedCount > 0 && <SeverityGauge memory={memory} />}
             <TriageCard result={triageResult} />
-
-            {/* Execution trace accordion */}
-            <AuditTrailView auditTrail={auditTrail} />
-
-            {/* Rule count footer */}
-            {rules.length > 0 && (
-              <Text style={styles.footerNote}>
-                Knowledge base: {rules.length} rule{rules.length !== 1 ? 's' : ''} active
-              </Text>
+            {triageResult && (
+              <NextStepCard
+                riskCategory={triageResult.riskCategory}
+                triageAdvice={triageResult.triageAdvice}
+              />
             )}
+            
+            {/* 2. Patient-friendly Symptoms + Context Summary */}
+            <PatientSymptomSummary assessments={assessments} />
+            
+            {/* 3. Patient-friendly Trace */}
+            <AuditTrailView auditTrail={auditTrail} showTechnicalToggle={false} />
+            
+            {/* 4. Safety Disclaimer */}
+            <Disclaimer />
+
+            {/* 5. Start New Assessment */}
+            <PrimaryButton 
+              label="Start New Assessment"
+              onPress={handleResetAssessment}
+              iconName="rotate-ccw"
+              style={{ marginTop: SPACING.xl, marginBottom: SPACING.xxxl }}
+            />
           </ScrollView>
         )}
       </View>
-
-      {/* ── Bottom Nav ───────────────────────────────────────────── */}
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        tabs={[
-          { id: 'SYMPTOMS', label: 'Symptoms', icon: 'clipboard' },
-          { id: 'RESULTS', label: hasResults ? 'Results 🔴' : 'Results', icon: 'activity' }
-        ]}
-      />
     </SafeAreaView>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Design tokens
-// ---------------------------------------------------------------------------
-
-const COLORS = {
-  primary:    '#10B981', // Emerald Green
-  bg:         '#F0FDF4', // Soft Mint
-  card:       '#FFFFFF',
-  border:     '#D1FAE5', // Light Green border
-  title:      '#064E3B', // Deep Forest Green
-  subtitle:   '#64748B',
-  tabBg:      '#F1F5F9',
-  tabActive:  '#FFFFFF',
-  tabText:    '#64748B',
-  tabTextActive: '#0F172A',
-  green:      '#16A34A',
-  amber:      '#D97706',
-  red:        '#E11D48',
-};
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -310,161 +432,156 @@ const COLORS = {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: COLORS.bgPrimary,
   },
   centred: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: SPACING.md,
   },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 16 : 8,
-    paddingBottom: 16,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: Platform.OS === 'android' ? SPACING.xl : SPACING.lg,
+    paddingBottom: SPACING.md,
+    backgroundColor: 'transparent',
     position: 'relative',
   },
   headerCenter: {
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#064E3B',
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.brandNavy,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '700',
-    marginTop: 2,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textMuted,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    marginTop: 1,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif',
   },
   homeBtn: {
     position: 'absolute',
-    right: 20,
-    bottom: 12,
-    padding: 8,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    right: SPACING.lg,
+    bottom: SPACING.md,
+    backgroundColor: COLORS.bgSurface,
+    borderRadius: RADIUS.pill,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOW.sm,
+    shadowOpacity: 0.05,
   },
   homeBtnHovered: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#F8FAFC',
   },
   homeBtnPressed: {
-    backgroundColor: '#A7F3D0',
+    backgroundColor: '#F8FAFC',
     transform: [{ scale: 0.94 }],
   },
-
-  // ── Tab bar ──────────────────────────────────────────────────────────────
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.tabBg,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    borderRadius: 10,
-    padding: 4,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 7,
-    gap: 6,
-  },
-  tabActive: {
-    backgroundColor: COLORS.tabActive,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.tabText,
-  },
-  tabTextActive: {
-    color: COLORS.tabTextActive,
-    fontWeight: '600',
-  },
-  badge: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontSize: 6,
-    color: '#FFF',
-  },
-
-  // ── Content ──────────────────────────────────────────────────────────────
   content: {
     flex: 1,
   },
   symptomsContent: {
     flex: 1,
   },
+  counterBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xs,
+  },
+  counterText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.brandGreen,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+  },
   resultsScroll: {
     flex: 1,
   },
   resultsContent: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 40,
-    gap: 14,
+    padding: SPACING.base,
+    paddingBottom: SPACING.xxxl,
+    gap: SPACING.md,
   },
-
-  // ── Loading / error ───────────────────────────────────────────────────────
+  // ── Loading / Error ───────────────────────────────────────────────────────
   loadingText: {
-    fontSize: 14,
-    color: COLORS.subtitle,
-    marginTop: 8,
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textMuted,
+    marginTop: SPACING.sm,
   },
   errorIcon: {
     fontSize: 36,
-    color: COLORS.amber,
+    color: COLORS.warning,
   },
   errorTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: COLORS.title,
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    color: COLORS.textPrimary,
   },
   errorBody: {
-    fontSize: 13,
-    color: COLORS.subtitle,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textMuted,
     textAlign: 'center',
-    paddingHorizontal: 32,
-    lineHeight: 19,
+    paddingHorizontal: SPACING.xxl,
+    lineHeight: 20,
   },
-
-  // ── Footer ───────────────────────────────────────────────────────────────
-  footerNote: {
-    fontSize: 11,
-    color: COLORS.subtitle,
-    textAlign: 'center',
-    paddingTop: 4,
+  formTitle: {
+    fontSize: TYPOGRAPHY.size.xxl,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.brandNavy,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
+    marginBottom: SPACING.sm,
+    letterSpacing: -0.5,
   },
+  formSubtitle: {
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xl,
+    lineHeight: 22,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: SPACING.lg,
+    bottom: SPACING.md,
+    backgroundColor: COLORS.bgSurface,
+    borderRadius: RADIUS.pill,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW.sm,
+    shadowOpacity: 0.05,
+  },
+  nextButton: {
+    backgroundColor: COLORS.brandGreen,
+    margin: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextButtonDisabled: {
+    backgroundColor: COLORS.borderLight,
+    opacity: 0.5,
+  },
+  nextButtonText: {
+    color: COLORS.bgSurface,
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: TYPOGRAPHY.weight.bold,
+  }
 });
+
+
+
+

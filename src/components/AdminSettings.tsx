@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { PinService } from '../services/PinService';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
+import PrimaryButton from './ui/PrimaryButton';
 
 export default function AdminSettings() {
   const [currentPin, setCurrentPin] = useState('');
@@ -56,6 +58,7 @@ export default function AdminSettings() {
             keyboardType="number-pad"
             maxLength={4}
             secureTextEntry
+            accessibilityLabel="Current PIN"
           />
         </View>
 
@@ -68,6 +71,7 @@ export default function AdminSettings() {
             keyboardType="number-pad"
             maxLength={4}
             secureTextEntry
+            accessibilityLabel="New PIN"
           />
         </View>
 
@@ -80,12 +84,15 @@ export default function AdminSettings() {
             keyboardType="number-pad"
             maxLength={4}
             secureTextEntry
+            accessibilityLabel="Confirm New PIN"
           />
         </View>
 
-        <Pressable style={styles.button} onPress={handleChangePin}>
-          <Text style={styles.buttonText}>Change PIN</Text>
-        </Pressable>
+        <PrimaryButton
+          label="Change PIN"
+          onPress={handleChangePin}
+          iconName="lock"
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -94,74 +101,69 @@ export default function AdminSettings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    padding: SPACING.xl,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: COLORS.bgSurface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: 'rgba(26, 58, 108, 0.04)',
+    ...SHADOW.md,
+    shadowOpacity: 0.04,
   },
   cardTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#064E3B',
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif-medium',
+    fontSize: TYPOGRAPHY.size.xxl,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
+    color: COLORS.brandNavy,
+    marginBottom: SPACING.xs,
+    fontFamily: TYPOGRAPHY.fontFamily.primary,
     letterSpacing: -0.5,
   },
   cardSubtitle: {
-    fontSize: 16,
-    color: '#10B981',
-    fontWeight: '600',
-    marginBottom: 24,
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.brandBlue,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    marginBottom: SPACING.xxl,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: SPACING.lg,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#064E3B',
-    marginBottom: 8,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.brandNavy,
+    marginBottom: SPACING.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.bgSurface,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26, 58, 108, 0.04)',
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.base,
     paddingVertical: 14,
     fontSize: 18,
-    color: '#0F172A',
-    fontWeight: '600',
+    color: COLORS.textPrimary,
+    fontWeight: TYPOGRAPHY.weight.semibold,
     letterSpacing: 4,
   },
   button: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: COLORS.brandGreen,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.base,
     alignItems: 'center',
-    marginTop: 12,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: SPACING.md,
+    ...SHADOW.md,
+  },
+  buttonPressed: {
+    backgroundColor: COLORS.brandGreenDark,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
+    color: COLORS.textOnGreen,
+    fontSize: TYPOGRAPHY.size.base,
+    fontWeight: TYPOGRAPHY.weight.extrabold,
     letterSpacing: 0.5,
   },
 });
-
