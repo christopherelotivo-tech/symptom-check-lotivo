@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Image,
   Platform,
   StatusBar,
+  Animated,
   ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -19,16 +20,40 @@ import PrimaryButton from '../components/ui/PrimaryButton';
 
 interface WelcomeScreenProps {
   onSelectMode: (mode: 'USER' | 'ADMIN') => void;
+  onAboutPress: () => void;
 }
 
-export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
-  const [showPinAuth, setShowPinAuth]     = useState(false);
-  const [pin, setPin]                     = useState('');
-  const [error, setError]                 = useState(false);
-  const [expectedPin, setExpectedPin]     = useState('1234');
-  const [isLoadingPin, setIsLoadingPin]   = useState(false);
+export default function WelcomeScreen({ onSelectMode, onAboutPress }: WelcomeScreenProps) {
+  // Step: 'splash' → 'home'
+  const [step, setStep] = useState<'splash' | 'home'>('splash');
 
-  // ── PIN auth logic (unchanged) ────────────────────────────────────────────
+  const [showPinAuth, setShowPinAuth] = useState(false);
+  const [pin, setPin]                 = useState('');
+  const [error, setError]             = useState(false);
+  const [expectedPin, setExpectedPin] = useState('1234');
+  const [isLoadingPin, setIsLoadingPin] = useState(false);
+
+  // Animations
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+  const homeOpacity   = useRef(new Animated.Value(0)).current;
+  const logoScale     = useRef(new Animated.Value(0.7)).current;
+
+  useEffect(() => {
+    // Logo pop-in
+    Animated.spring(logoScale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+
+    // After 2s, transition to home step
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(splashOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.timing(homeOpacity,   { toValue: 1, duration: 600, useNativeDriver: true, delay: 300 }),
+      ]).start(() => setStep('home'));
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ── PIN auth logic ────────────────────────────────────────────────────────
   const handleAdminPress = async () => {
     setIsLoadingPin(true);
     const savedPin = await PinService.getPin();
@@ -50,7 +75,7 @@ export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
     }
   };
 
-  // ── PIN Entry Screen ───────────────────────────────────────────────────────
+  // ── PIN Entry Screen ──────────────────────────────────────────────────────
   if (showPinAuth) {
     return (
       <SafeAreaView style={styles.container}>
@@ -93,59 +118,49 @@ export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
     );
   }
 
-  // ── Main Welcome Screen ────────────────────────────────────────────────────
+  // ── Splash Step ──────────────────────────────────────────────────────────
+  if (step === 'splash') {
+    return (
+      <View style={styles.splashContainer}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.brandNavy} />
+        <Animated.View style={[styles.splashContent, { opacity: splashOpacity }]}>
+          <Animated.Image
+            source={require('../../assets/icons/logo.jpg')}
+            style={[styles.splashLogo, { transform: [{ scale: logoScale }] }]}
+            accessibilityLabel="SymptaCare logo"
+          />
+          <Text style={styles.splashTitle}>SymptaCare</Text>
+          <Text style={styles.splashTagline}>Your personal health guide</Text>
+        </Animated.View>
+      </View>
+    );
+  }
+
+  // ── Home Step ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.brandNavy} />
 
-      {/* ── TOP HERO BAND (Navy) ── */}
+      {/* Navy hero */}
       <View style={styles.heroBand}>
-        {/* Decorative circles */}
         <View style={styles.circle1} />
         <View style={styles.circle2} />
-
-        <View style={styles.heroContent}>
+        <Animated.View style={[styles.heroContent, { opacity: homeOpacity }]}>
           <Image
             source={require('../../assets/icons/logo.jpg')}
-            style={styles.logoImage}
+            style={styles.logoImage as any}
             accessibilityLabel="SymptaCare logo"
           />
           <Text style={styles.heroTitle}>SymptaCare</Text>
-          <Text style={styles.heroTagline}>Your personal health guide</Text>
-        </View>
+        </Animated.View>
       </View>
 
-      {/* ── BOTTOM CONTENT SHEET ── */}
-      <ScrollView
-        style={styles.sheet}
-        contentContainerStyle={styles.sheetContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Feature cards */}
-        <View style={styles.featureRow}>
-          <View style={styles.featureCard}>
-            <View style={[styles.featureIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Feather name="shield" size={20} color={COLORS.brandNavy} />
-            </View>
-            <Text style={styles.featureLabel}>100% Private</Text>
-            <Text style={styles.featureDesc}>All data stays on your device</Text>
-          </View>
-          <View style={styles.featureCard}>
-            <View style={[styles.featureIcon, { backgroundColor: '#F0FDF4' }]}>
-              <Feather name="wifi-off" size={20} color={COLORS.brandGreen} />
-            </View>
-            <Text style={styles.featureLabel}>Works Offline</Text>
-            <Text style={styles.featureDesc}>No internet required</Text>
-          </View>
-          <View style={styles.featureCard}>
-            <View style={[styles.featureIcon, { backgroundColor: '#FFFBEB' }]}>
-              <Feather name="clock" size={20} color={COLORS.warning} />
-            </View>
-            <Text style={styles.featureLabel}>Instant Results</Text>
-            <Text style={styles.featureDesc}>Under 30 seconds</Text>
-          </View>
-        </View>
-
+      {/* Bottom sheet */}
+      <Animated.View style={[styles.sheet, { opacity: homeOpacity }]}>
+        <ScrollView
+          contentContainerStyle={styles.sheetContent}
+          keyboardShouldPersistTaps="handled"
+        >
         <Text style={styles.sheetHeading}>How are you feeling today?</Text>
         <Text style={styles.sheetSubtext}>
           Tell us your symptoms and we'll help you understand what to do next.
@@ -165,26 +180,30 @@ export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
           </Text>
         </View>
 
-        <View style={styles.adminRow}>
-          <View style={styles.dividerLine} />
-          <Pressable
-            onPress={isLoadingPin ? undefined : handleAdminPress}
-            style={styles.adminLink}
-          >
+        {/* Bottom row: About link | Admin link */}
+        <View style={styles.bottomRow}>
+          <Pressable onPress={onAboutPress} style={styles.bottomLink}>
+            <Feather name="info" size={13} color={COLORS.textMuted} />
+            <Text style={styles.bottomLinkText}>  About SymptaCare</Text>
+          </Pressable>
+
+          <View style={styles.dotSep} />
+
+          <Pressable onPress={isLoadingPin ? undefined : handleAdminPress} style={styles.bottomLink}>
             {isLoadingPin ? (
               <ActivityIndicator size="small" color={COLORS.brandBlue} />
             ) : (
               <>
                 <Feather name="settings" size={13} color={COLORS.textMuted} />
-                <Text style={styles.adminLinkText}>  Clinical Admin</Text>
+                <Text style={styles.bottomLinkText}>  Clinical Admin</Text>
               </>
             )}
           </Pressable>
-          <View style={styles.dividerLine} />
         </View>
 
         <Text style={styles.footerCopyright}>© 2026 SymptaCare · Group 4</Text>
-      </ScrollView>
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -192,72 +211,95 @@ export default function WelcomeScreen({ onSelectMode }: WelcomeScreenProps) {
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
+  // ── Splash ────────────────────────────────────────────────────────────────
+  splashContainer: {
+    flex: 1,
+    backgroundColor: COLORS.brandNavy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashContent: {
+    alignItems: 'center',
+  },
+  splashLogo: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: SPACING.lg,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.2)',
+  } as const,
+  splashTitle: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    marginBottom: SPACING.sm,
+  },
+  splashTagline: {
+    fontSize: TYPOGRAPHY.size.base,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
+  },
+
+  // ── Main Screen ───────────────────────────────────────────────────────────
   container: {
     flex: 1,
     backgroundColor: COLORS.brandNavy,
   },
-
-  // ── Hero Band ──────────────────────────────────────────────────────────────
   heroBand: {
     backgroundColor: COLORS.brandNavy,
-    paddingTop: Platform.OS === 'android' ? SPACING.xxl : SPACING.xl,
-    paddingBottom: SPACING.xxxl,
+    paddingTop: Platform.OS === 'android' ? SPACING.xxl : SPACING.md,
+    paddingBottom: SPACING.xxl,
     alignItems: 'center',
     overflow: 'hidden',
     position: 'relative',
   },
   circle1: {
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
-    top: -80,
-    right: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(56,189,248,0.08)',
+    top: -60,
+    right: -50,
   },
   circle2: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(56, 189, 248, 0.06)',
-    bottom: -40,
-    left: -30,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: 'rgba(56,189,248,0.06)',
+    bottom: -30,
+    left: -20,
   },
   heroContent: {
     alignItems: 'center',
     zIndex: 1,
   },
   logoImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    marginBottom: SPACING.md,
-    borderWidth: 3,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    marginBottom: SPACING.sm,
+    borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.2)',
   } as const,
   heroTitle: {
-    fontSize: 38,
+    fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: -1,
-    marginBottom: SPACING.xs,
-  },
-  heroTagline: {
-    fontSize: TYPOGRAPHY.size.base,
-    color: 'rgba(255,255,255,0.65)',
-    fontWeight: '500',
+    letterSpacing: -0.5,
   },
 
-  // ── Bottom Sheet ───────────────────────────────────────────────────────────
+  // ── Sheet ─────────────────────────────────────────────────────────────────
   sheet: {
     flex: 1,
     backgroundColor: COLORS.bgPrimary,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    marginTop: -20,
+    marginTop: -16,
   },
   sheetContent: {
     padding: SPACING.xl,
@@ -265,47 +307,6 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxxl,
     alignItems: 'center',
   },
-
-  // ── Feature Cards ─────────────────────────────────────────────────────────
-  featureRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.xxl,
-    width: '100%',
-  },
-  featureCard: {
-    flex: 1,
-    backgroundColor: COLORS.bgSurface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    ...SHADOW.sm,
-  },
-  featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.sm,
-  },
-  featureLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  featureDesc: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-
-  // ── Sheet Text ─────────────────────────────────────────────────────────────
   sheetHeading: {
     fontSize: TYPOGRAPHY.size.xl,
     fontWeight: '700',
@@ -332,36 +333,33 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
-  // ── Admin ─────────────────────────────────────────────────────────────────
-  adminRow: {
+  // ── Bottom Links ──────────────────────────────────────────────────────────
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
+    justifyContent: 'center',
     marginTop: SPACING.xxxl,
-    width: '100%',
+    gap: SPACING.md,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.borderLight,
-  },
-  adminLink: {
+  bottomLink: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.base,
-    borderRadius: RADIUS.pill,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    backgroundColor: COLORS.bgSurface,
+    paddingHorizontal: SPACING.md,
   },
-  adminLinkText: {
+  bottomLinkText: {
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.textMuted,
     fontWeight: '500',
   },
+  dotSep: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.borderLight,
+  },
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────────────────────────
   footerCopyright: {
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.textMuted,
@@ -447,7 +445,4 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.base,
     fontWeight: '500',
   },
-
-  // ── Misc ──────────────────────────────────────────────────────────────────
 });
-
