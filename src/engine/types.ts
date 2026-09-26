@@ -74,6 +74,7 @@ export interface UserInputAuditEntry extends BaseAuditEntry {
 export interface RuleFiredAuditEntry extends BaseAuditEntry {
   type: 'RULE_FIRED';
   ruleId: string;
+  matchQuality?: number;
 }
 
 /**
