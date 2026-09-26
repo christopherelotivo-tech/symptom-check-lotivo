@@ -375,7 +375,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
               <SymptomForm memory={memory} onToggle={handleToggle} />
             </View>
           </ScrollView>
-          <View style={{ paddingHorizontal: SPACING.xl, paddingVertical: SPACING.lg, backgroundColor: 'transparent' }}>
+          <View style={{ paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, paddingBottom: Math.max(insets.bottom, SPACING.lg), backgroundColor: 'transparent' }}>
             {selectedCount === 1 && (
               <Text style={{ textAlign: 'center', color: COLORS.triageAmberIcon, fontWeight: '600', fontSize: 13, marginBottom: SPACING.sm }}>
                 ⚠️  Please select at least 2 symptoms to continue
@@ -456,7 +456,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
               </View>
             </ScrollView>
 
-            <View style={{ paddingHorizontal: SPACING.xl, paddingVertical: SPACING.lg, backgroundColor: 'transparent' }}>
+            <View style={{ paddingHorizontal: SPACING.xl, paddingTop: SPACING.lg, paddingBottom: Math.max(insets.bottom, SPACING.lg), backgroundColor: 'transparent' }}>
               <PrimaryButton 
                 label="Analyze Symptoms"
                 onPress={handleNextStep}
