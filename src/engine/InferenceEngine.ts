@@ -95,13 +95,13 @@ export class InferenceEngine {
         thresholdCrossed: 1.0,
         newRiskCategory: 'Red'
       });
-    } else if (aggregateScore >= 0.5) {
+    } else if (aggregateScore >= 0.6) {
       auditTrail.push({
         id: this.generateId(),
         timestamp: Date.now(),
         type: 'AGGREGATE_SEVERITY_OVERRIDE',
         aggregateScore,
-        thresholdCrossed: 0.5,
+        thresholdCrossed: 0.6,
         newRiskCategory: 'Amber'
       });
     }
