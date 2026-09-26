@@ -35,18 +35,28 @@ export class InferenceEngine {
     while (factDerived) {
       factDerived = false;
 
-      // 1. Match
-      const matchedRules = this.rules.filter(rule => 
-        !firedRuleIds.has(rule.id) && this.checkAntecedents(rule.antecedents, memory)
-      );
+      // 1. Match — collect rules with their match quality
+      const matchedRules: { rule: Rule; matchQuality: number }[] = [];
+      for (const rule of this.rules) {
+        if (firedRuleIds.has(rule.id)) continue;
+        const quality = this.checkAntecedentsWithQuality(rule.antecedents, memory);
+        if (quality > 0) {
+          matchedRules.push({ rule, matchQuality: quality });
+        }
+      }
 
       if (matchedRules.length === 0) {
         break;
       }
 
-      // 2. Resolve
-      matchedRules.sort((a, b) => b.metadata.priority - a.metadata.priority);
-      const ruleToFire = matchedRules[0];
+      // 2. Resolve — prefer higher priority, then higher match quality
+      matchedRules.sort((a, b) => {
+        const prioDiff = b.rule.metadata.priority - a.rule.metadata.priority;
+        if (prioDiff !== 0) return prioDiff;
+        return b.matchQuality - a.matchQuality;
+      });
+      const best = matchedRules[0];
+      const ruleToFire = best.rule;
 
       // 3. Act
       const { fact, value } = ruleToFire.consequent;
@@ -61,7 +71,8 @@ export class InferenceEngine {
         id: this.generateId(),
         timestamp,
         type: 'RULE_FIRED',
-        ruleId: ruleToFire.id
+        ruleId: ruleToFire.id,
+        matchQuality: best.matchQuality,
       });
 
       auditTrail.push({
@@ -111,13 +122,13 @@ export class InferenceEngine {
 
   /**
    * Checks if rule conditions are satisfied against the Working Memory.
-   * IMPLEMENTS REFINED SMART PARTIAL MATCHING:
-   * - Rules with 1 or 2 positive symptoms require 100% exact match.
-   * - Rules with 3 or more positive symptoms require only a 66% match.
+   * Returns 0 if not matched, or a quality score (0.01 to 1.0) if matched.
+   * - 1.0 = perfect exact match (all positive conditions met)
+   * - 0.66 = partial match (66% of positive conditions met)
    * - Negative/Exclusion conditions MUST always be strictly met.
    */
-  private checkAntecedents(antecedents: RuleCondition[], memory: WorkingMemory): boolean {
-    if (!antecedents || antecedents.length === 0) return false;
+  private checkAntecedentsWithQuality(antecedents: RuleCondition[], memory: WorkingMemory): number {
+    if (!antecedents || antecedents.length === 0) return 0;
 
     let positiveConditions = 0;
     let positiveMatches = 0;
@@ -135,7 +146,6 @@ export class InferenceEngine {
         positiveConditions++;
         if (factValue === true) positiveMatches++;
       } else {
-        // It's an exclusion condition (expected false)
         const conditionMet = 
           (condition.operator === 'EQUALS' && factValue === condition.value) ||
           (condition.operator === 'NOT_EQUALS' && factValue !== condition.value);
@@ -146,20 +156,18 @@ export class InferenceEngine {
       }
     }
 
-    // Fail immediately if an exclusion is violated (e.g. requires fever=false but user has fever)
-    if (!exclusionsSatisfied) return false;
-
-    // Fail if there are no positive conditions to match against
-    if (positiveConditions === 0) return false;
+    if (!exclusionsSatisfied) return 0;
+    if (positiveConditions === 0) return 0;
 
     let requiredPositiveMatches = positiveConditions;
-    
-    // Partial Match Logic for Complex Rules
     if (positiveConditions >= 3) {
       requiredPositiveMatches = Math.ceil(positiveConditions * 0.66);
     }
 
-    return positiveMatches >= requiredPositiveMatches;
+    if (positiveMatches < requiredPositiveMatches) return 0;
+
+    // Return quality score: exact match = 1.0, partial = fraction
+    return positiveMatches / positiveConditions;
   }
 
   /**

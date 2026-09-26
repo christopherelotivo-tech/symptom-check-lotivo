@@ -562,7 +562,7 @@
       "value": true
     },
     "metadata": {
-      "priority": 60,
+      "priority": 65,
       "riskCategory": "Amber",
       "description": "Possible Pneumonia / Pleurisy",
       "triageAdvice": "Please seek evaluation from a healthcare provider soon.",

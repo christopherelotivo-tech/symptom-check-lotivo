@@ -51,9 +51,16 @@ function deriveTriageResult(
 ): TriageResult | null {
   const overrideEntry = auditTrail.find(e => e.type === 'AGGREGATE_SEVERITY_OVERRIDE') as any;
 
-  const firedRuleIds = auditTrail
-    .filter((e): e is RuleFiredAuditEntry => e.type === 'RULE_FIRED')
-    .map(e => e.ruleId);
+  const firedEntries = auditTrail
+    .filter((e): e is RuleFiredAuditEntry => e.type === 'RULE_FIRED');
+
+  const firedRuleIds = firedEntries.map(e => e.ruleId);
+
+  // Build a map of ruleId -> matchQuality from audit trail
+  const qualityMap = new Map<string, number>();
+  for (const entry of firedEntries) {
+    qualityMap.set(entry.ruleId, (entry as any).matchQuality ?? 1.0);
+  }
 
   const ruleMap = new Map(rules.map(r => [r.id, r]));
 
@@ -61,13 +68,29 @@ function deriveTriageResult(
     .map(id => ruleMap.get(id))
     .filter((r): r is Rule => r !== undefined)
     .sort((a, b) => {
+      const qualA = qualityMap.get(a.id) ?? 1;
+      const qualB = qualityMap.get(b.id) ?? 1;
+      const aIsExact = qualA >= 0.99;
+      const bIsExact = qualB >= 0.99;
+
+      // 1. Exact matches ALWAYS beat partial matches
+      if (aIsExact !== bIsExact) return aIsExact ? 1 : -1;
+
+      // 2. Among same quality tier, higher risk wins
       const riskDiff =
         (RISK_RANK[b.metadata.riskCategory] ?? 0) -
         (RISK_RANK[a.metadata.riskCategory] ?? 0);
       if (riskDiff !== 0) return riskDiff;
+
+      // 3. Among same risk, higher quality wins
+      const qualDiff = qualB - qualA;
+      if (Math.abs(qualDiff) > 0.01) return qualDiff;
+
+      // 4. Among same quality, higher priority wins
       const prioDiff = b.metadata.priority - a.metadata.priority;
       if (prioDiff !== 0) return prioDiff;
-      // If same risk and priority, the more specific rule (more conditions) wins!
+
+      // 5. Tiebreaker: more specific rule wins
       return b.antecedents.length - a.antecedents.length;
     })[0];
 
