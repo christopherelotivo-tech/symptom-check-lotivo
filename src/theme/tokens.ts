@@ -17,20 +17,22 @@ import { Platform } from 'react-native';
 export const COLORS = {
 
   // ── Brand (derived from SymptaCare logo) ─────────────────────────────────────
-  brandNavy:        '#1A3A6C',   // Deep logo blue — primary text, headers
-  brandBlue:        '#2B6CB0',   // Mid blue — secondary accents
+  brandNavy:        '#263248',   // Deep logo navy (stethoscope core)
+  brandBlue:        '#599ED6',   // Sky blue (legible version of stethoscope top)
+  brandBlueLight:   '#9CCAE9',   // Light sky blue (stethoscope top exact)
   brandCyan:        '#38BDF8',   // Cyan — interactive highlights
   brandGreen:       '#10B981',   // SymptaCare green — primary CTA
+  brandMint:        '#A3E4B8',   // Pastel mint (logo sparkles)
   brandGreenDark:   '#059669',   // Darker green — pressed states
 
   // ── Backgrounds ───────────────────────────────────────────────────────────
-  bgPrimary:        '#EFF6FF',   // Soft blue-white — screen background
-  bgSurface:        '#FFFFFF',   // Card / panel surface
-  bgSurface2:       '#F8FAFC',   // Secondary surface / section fill
-  bgOverlay:        'rgba(26, 58, 108, 0.05)', // Subtle hover tint
+  bgPrimary:        '#F6F8FB',   // Very soft blue/grey-white matching logo background
+  bgSurface:        '#F0FDF4',   // Solid soft mint-white (Tailwind green-50)
+  bgSurface2:       '#DCFCE7',   // Solid slightly darker mint (Tailwind green-100)
+  bgOverlay:        'rgba(38, 50, 72, 0.05)', // Subtle hover tint
 
   // ── Text ──────────────────────────────────────────────────────────────────
-  textPrimary:      '#1A3A6C',   // Deep navy — headings, primary labels
+  textPrimary:      '#263248',   // Deep navy — headings, primary labels
   textSecondary:    '#475569',   // Mid gray — body copy
   textMuted:        '#94A3B8',   // Muted — subtitles, metadata, hints
   textOnGreen:      '#FFFFFF',   // Text on green backgrounds

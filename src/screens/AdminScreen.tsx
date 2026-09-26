@@ -4,14 +4,20 @@ import {
   Alert,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
+  Image,
+  LayoutAnimation,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 import {
   deleteCustomRule,
@@ -29,12 +35,33 @@ import Accordion from '../components/ui/Accordion';
 import PrimaryButton from '../components/ui/PrimaryButton';
 import AdminSettings from '../components/AdminSettings';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
+import { DURATION_OPTIONS, SEVERITY_OPTIONS } from '../utils/ContextConfig';
+
+function formatFactName(fact: string): string {
+  if (fact.includes('_duration_')) {
+    const parts = fact.split('_duration_');
+    const symptom = parts[0].replace(/_/g, ' ');
+    const code = parts[1];
+    const option = DURATION_OPTIONS.find(o => o.value === code);
+    const durationLabel = option ? (option.shortLabel || option.label) : code.replace(/_/g, ' ');
+    return `${symptom} (Duration: ${durationLabel})`;
+  }
+  if (fact.includes('_severity_')) {
+    const parts = fact.split('_severity_');
+    const symptom = parts[0].replace(/_/g, ' ');
+    const code = parts[1];
+    const option = SEVERITY_OPTIONS.find(o => o.value === code);
+    const severityLabel = option ? (option.shortLabel || option.label) : code.replace(/_/g, ' ');
+    return `${symptom} (Severity: ${severityLabel})`;
+  }
+  return fact.replace(/_/g, ' ');
+}
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type AdminTab = 'PATHWAYS' | 'SIMULATOR' | 'SYNC' | 'SETTINGS';
+type AdminTab = 'PROTOCOLS' | 'SIMULATOR' | 'SETTINGS';
 
 interface RuleRecord {
   rule: Rule;
@@ -51,11 +78,13 @@ interface AdminScreenProps {
 }
 
 export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>('PATHWAYS');
+  const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = useState<AdminTab>('PROTOCOLS');
   const [isBuilding, setIsBuilding] = useState(false);
   const [allRules, setAllRules] = useState<RuleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeRiskTab, setActiveRiskTab] = useState<'Red' | 'Amber' | 'Green'>('Green');
+  const [activeRiskTab, setActiveRiskTab] = useState<'All' | 'Red' | 'Amber' | 'Green'>('All');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchRules();
@@ -116,65 +145,12 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
     ]);
   };
 
-  const handleExport = async () => {
-    try {
-      await RuleStorageService.exportRules();
-    } catch (error) {
-      Alert.alert('Export Failed', 'Unable to export rules to filesystem.');
-    }
-  };
-
-  const handleImport = async () => {
-    try {
-      const summary = await RuleStorageService.importRules();
-      if (!summary) return; // User cancelled
-
-      let msg = `Successfully imported ${summary.successCount} rules.`;
-      if (summary.failedRules.length > 0) {
-        msg += `\n\nFailed to import ${summary.failedRules.length} rules due to validation errors.`;
-        console.warn('Import failures:', summary.failedRules);
-      }
-
-      Alert.alert('Import Complete', msg);
-      fetchRules(); // Refresh list
-    } catch (error) {
-      Alert.alert('Import Failed', 'Unable to import rules from the selected file.');
-    }
-  };
-
-  const renderSyncTab = () => (
-    <ScrollView contentContainerStyle={[styles.listContent, {padding: SPACING.xl}]}>
-      <View style={{marginBottom: SPACING.xxl}}>
-        <Text style={styles.pageTitle}>Knowledge Sync</Text>
-        <Text style={styles.pageSubtitle}>Backup and restore clinical pathways.</Text>
-      </View>
-
-      <View style={[styles.ruleCard, {padding: SPACING.xl, marginBottom: SPACING.xl}]}>
-        <Feather name="download" size={32} color={COLORS.brandNavy} style={{marginBottom: SPACING.md}} />
-        <Text style={{fontSize: 18, fontWeight: 'bold', color: COLORS.brandNavy, marginBottom: SPACING.sm}}>Export Knowledge Base</Text>
-        <Text style={{color: COLORS.textMuted, marginBottom: SPACING.lg, lineHeight: 20}}>
-          Save all active rules and clinical pathways to a secure file on your device for backup or transfer.
-        </Text>
-        <PrimaryButton label="Export to File" onPress={handleExport} />
-      </View>
-
-      <View style={[styles.ruleCard, {padding: SPACING.xl}]}>
-        <Feather name="upload" size={32} color={COLORS.brandNavy} style={{marginBottom: SPACING.md}} />
-        <Text style={{fontSize: 18, fontWeight: 'bold', color: COLORS.brandNavy, marginBottom: SPACING.sm}}>Import Knowledge Base</Text>
-        <Text style={{color: COLORS.textMuted, marginBottom: SPACING.lg, lineHeight: 20}}>
-          Load new clinical pathways from a verified JSON file. This will add new rules and update existing ones.
-        </Text>
-        <PrimaryButton label="Import from File" onPress={handleImport} />
-      </View>
-    </ScrollView>
-  );
-
   // ── Render Helpers ────────────────────────────────────────────────────────
   const renderListTab = () => {
     if (isBuilding) {
       return (
         <View style={{flex: 1}}>
-          <View style={{flexDirection: 'row', alignItems: 'center', padding: SPACING.lg, paddingBottom: 0}}>
+          <View style={{flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.xl, paddingTop: SPACING.xs, paddingBottom: SPACING.sm}}>
             <Pressable onPress={() => setIsBuilding(false)} style={{flexDirection: 'row', alignItems: 'center'}}>
                <Feather name="arrow-left" size={24} color={COLORS.brandNavy} />
                <Text style={{marginLeft: SPACING.sm, fontSize: 16, fontWeight: '600', color: COLORS.brandNavy}}>Back to Pathways</Text>
@@ -213,100 +189,215 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
     return (
       <ScrollView contentContainerStyle={styles.listContent}>
         <View style={styles.listHeaderRow}>
-          <View>
-            <Text style={styles.pageTitle}>Clinical Pathways</Text>
-            <Text style={styles.pageSubtitle}>Manage active triage protocols.</Text>
-          </View>
-          <View style={styles.listActionGroup}>
-            <Pressable style={styles.listActionBtn} onPress={() => setIsBuilding(true)}>
-              <Feather name="plus" size={16} color={COLORS.brandNavy} />
-              <Text style={styles.listActionText}> Add</Text>
-            </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pageTitle}>Health Protocols</Text>
+            <Text style={styles.pageSubtitle}>Manage and monitor active health guidelines</Text>
           </View>
         </View>
 
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Feather name="search" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search protocols..."
+            placeholderTextColor={COLORS.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.lg }}>
+          <Pressable style={styles.newProtocolBtn} onPress={() => setIsBuilding(true)}>
+            <Feather name="plus" size={18} color="white" />
+            <Text style={styles.newProtocolText}> New Protocol</Text>
+          </Pressable>
+        </View>
+
         {/* Risk Tabs */}
-        <View style={styles.riskTabsContainer}>
-          {(['Green', 'Amber', 'Red'] as const).map(category => {
-            const count = allRules.filter(r => r.rule.metadata.riskCategory === category).length;
+        <Text style={styles.tiersLabel}>ASSESSMENT URGENCY TIERS</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.riskTabsContainer}>
+          {(['All', 'Green', 'Amber', 'Red'] as const).map(category => {
+            const count = category === 'All' 
+              ? allRules.length 
+              : allRules.filter(r => r.rule.metadata.riskCategory === category).length;
             const isActive = activeRiskTab === category;
             
-            const color = category === 'Red' ? COLORS.triageRedIcon : category === 'Amber' ? COLORS.triageAmberIcon : COLORS.triageGreenIcon;
-            const bg = category === 'Red' ? COLORS.triageRedBg : category === 'Amber' ? COLORS.triageAmberBg : COLORS.triageGreenBg;
-            const border = category === 'Red' ? COLORS.triageRedBorder : category === 'Amber' ? COLORS.triageAmberBorder : COLORS.triageGreenBorder;
-            
+            let color = COLORS.textSecondary;
+            let bgColor = COLORS.bgSurface; // Inactive background
+            let textColor = COLORS.textSecondary;
+            let activeBgColor = 'white';
+
+            if (category === 'Red') { color = COLORS.triageRedIcon; activeBgColor = '#EF4444'; }
+            else if (category === 'Amber') { color = COLORS.triageAmberIcon; activeBgColor = '#F59E0B'; }
+            else if (category === 'Green') { color = COLORS.triageGreenIcon; activeBgColor = '#10B981'; }
+            else if (category === 'All') { color = COLORS.brandNavy; activeBgColor = '#0F766E'; }
+
             return (
               <Pressable 
                 key={category} 
                 style={[
-                  styles.riskTabBtn, 
-                  isActive && { backgroundColor: bg, borderColor: border }
+                  styles.riskTabBtn,
+                  { backgroundColor: bgColor, borderColor: 'transparent' },
+                  isActive && { backgroundColor: activeBgColor }
                 ]}
-                onPress={() => setActiveRiskTab(category)}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setActiveRiskTab(category);
+                }}
               >
-                <Text style={[styles.riskTabText, isActive && { color }]}>
-                  {category === 'Red' ? 'Emergency' : category === 'Amber' ? 'Doctor' : 'Low Concern'} ({count})
+                {category !== 'All' && !isActive && (
+                  <View style={[styles.tierDot, { backgroundColor: color }]} />
+                )}
+                {category !== 'All' && isActive && (
+                  <View style={[styles.tierDot, { backgroundColor: '#FFFFFF' }]} />
+                )}
+                <Text style={[
+                  styles.riskTabText, 
+                  { color: textColor },
+                  isActive && { color: '#FFFFFF', fontWeight: '700' }
+                ]}>
+                  {category === 'Red' ? 'Emergency' : category === 'Amber' ? 'Doctor Consult' : category === 'Green' ? 'Low Concern' : 'All'}
                 </Text>
+                <View style={[
+                  styles.countBadge, 
+                  isActive ? { backgroundColor: 'rgba(255,255,255,0.2)' } : { backgroundColor: COLORS.bgPrimary }
+                ]}>
+                  <Text style={[
+                    styles.countText, 
+                    isActive ? { color: '#FFFFFF' } : { color: textColor }
+                  ]}>{count}</Text>
+                </View>
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
         {/* Rules List for Active Risk */}
-        {allRules.filter(r => r.rule.metadata.riskCategory === activeRiskTab).map(({ rule, isEnabled, isSystem }) => (
+        {allRules
+          .filter(r => (activeRiskTab === 'All' || r.rule.metadata.riskCategory === activeRiskTab))
+          .filter(r => r.rule.metadata.description.toLowerCase().includes(searchQuery.toLowerCase()) || r.rule.id.toLowerCase().includes(searchQuery.toLowerCase()))
+          .map(({ rule, isEnabled, isSystem }) => (
           <View key={rule.id} style={styles.guidelineCard}>
             <View style={styles.guidelineHeader}>
+              <View style={styles.tierPillRow}>
+                <View style={[styles.tierPill, { 
+                  backgroundColor: rule.metadata.riskCategory === 'Red' ? '#EF4444' : rule.metadata.riskCategory === 'Amber' ? '#F59E0B' : '#10B981',
+                  borderColor: 'transparent'
+                }]}>
+                  <Text style={[styles.tierPillText, {
+                    color: '#FFFFFF'
+                  }]}>
+                    {rule.metadata.riskCategory === 'Red' ? 'EMERGENCY TIER 3' : rule.metadata.riskCategory === 'Amber' ? 'CONSULT TIER 2' : 'LOW RISK TIER 1'}
+                  </Text>
+                </View>
+              </View>
+
               <View style={styles.guidelineTitleRow}>
-                {isSystem && <Feather name="shield" size={14} color={COLORS.brandBlue} style={{ marginRight: SPACING.sm }} />}
-                <Text style={styles.guidelineTitle} numberOfLines={2}>
-                  {rule.metadata.description || 'Custom Clinical Guideline'}
-                </Text>
+                <View style={styles.documentIconBox}>
+                  <Feather name="file-text" size={20} color={COLORS.brandBlue} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.guidelineTitle}>
+                    {rule.metadata.description || 'Custom Health Protocol'}
+                  </Text>
+                  <Text style={styles.guidelineSubtitle}>
+                    {isSystem ? 'Primary health protocol • System rule' : 'Custom protocol • Local rule'}
+                  </Text>
+                </View>
               </View>
             </View>
 
             <View style={styles.guidelineClinicalBody}>
-              <Text style={styles.clinicalLabel}>Triage Advice</Text>
-              <Text style={styles.clinicalAdvice}>{rule.metadata.triageAdvice}</Text>
+              <Accordion title="View Protocol Details & Conditions" icon="file-text">
+                <Text style={styles.clinicalLabel}>ASSESSMENT ADVICE</Text>
+                
+                {rule.metadata.selfCareAdvice && (
+                  <View style={styles.adviceRow}>
+                    <View style={[styles.adviceBullet, { backgroundColor: '#10B981' }]} />
+                    <Text style={styles.adviceText}>
+                      <Text style={{ fontWeight: 'bold', color: COLORS.brandNavy }}>Self-Care: </Text>
+                      {rule.metadata.selfCareAdvice}
+                    </Text>
+                  </View>
+                )}
+                {rule.metadata.medicationAdvice && (
+                  <View style={styles.adviceRow}>
+                    <View style={[styles.adviceBullet, { backgroundColor: '#3B82F6' }]} />
+                    <Text style={styles.adviceText}>
+                      <Text style={{ fontWeight: 'bold', color: COLORS.brandNavy }}>Medication: </Text>
+                      {rule.metadata.medicationAdvice}
+                    </Text>
+                  </View>
+                )}
+                {rule.metadata.escalationTrigger && (
+                  <View style={styles.adviceRow}>
+                    <View style={[styles.adviceBullet, { backgroundColor: '#F59E0B' }]} />
+                    <Text style={styles.adviceText}>
+                      <Text style={{ fontWeight: 'bold', color: COLORS.brandNavy }}>Escalate if: </Text>
+                      {rule.metadata.escalationTrigger}
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Fallback if no categorized advice exists */}
+                {!rule.metadata.selfCareAdvice && !rule.metadata.medicationAdvice && !rule.metadata.escalationTrigger && (
+                  <Text style={styles.clinicalAdvice}>{rule.metadata.triageAdvice}</Text>
+                )}
 
-              <Text style={styles.clinicalLabel}>Required Symptoms</Text>
-              <View style={styles.symptomPills}>
-                {rule.antecedents.filter(a => a.value === true).map((ant, idx) => (
-                  <View key={idx} style={styles.symptomPill}>
-                    <Text style={styles.symptomPillText}>{ant.fact.replace(/_/g, ' ')}</Text>
-                  </View>
-                ))}
-                {rule.antecedents.filter(a => a.value === false).map((ant, idx) => (
-                  <View key={idx} style={[styles.symptomPill, styles.symptomPillNegative]}>
-                    <Text style={[styles.symptomPillText, styles.symptomPillTextNegative]}>NO {ant.fact.replace(/_/g, ' ')}</Text>
-                  </View>
-                ))}
-              </View>
+                <Text style={[styles.clinicalLabel, { marginTop: SPACING.lg }]}>REQUIRED SYMPTOM CONDITIONS</Text>
+                <View style={styles.symptomPills}>
+                  {rule.antecedents.filter(a => a.value === true).map((ant, idx) => {
+                    const factName = formatFactName(ant.fact);
+                        
+                    return (
+                      <View key={idx} style={[styles.symptomPill, { borderColor: '#93C5FD', backgroundColor: '#EFF6FF' }]}>
+                        <Feather name="check" size={12} color="#3B82F6" style={{ marginRight: 4 }} />
+                        <Text style={[styles.symptomPillText, { color: '#3B82F6', textTransform: 'capitalize' }]}>{factName} (Present)</Text>
+                      </View>
+                    );
+                  })}
+                  {rule.antecedents.filter(a => a.value === false).map((ant, idx) => {
+                    const factName = formatFactName(ant.fact);
+
+                    return (
+                      <View key={idx} style={[styles.symptomPill, { borderColor: '#A7F3D0', backgroundColor: '#ECFDF5' }]}>
+                        <Feather name="x" size={12} color="#10B981" style={{ marginRight: 4 }} />
+                        <Text style={[styles.symptomPillText, { color: '#10B981', textTransform: 'capitalize' }]}>{factName} (Absent)</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                <View style={[styles.techDetailsBox, { marginTop: SPACING.xl }]}>
+                  <Text style={styles.ruleSectionTitle}>SYSTEM IDENTIFIER</Text>
+                  <Text style={styles.ruleCode}>{rule.id} (Priority: {rule.metadata.priority})</Text>
+                  <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>IF (CONDITIONS)</Text>
+                  {rule.antecedents.map((ant, idx) => (
+                    <Text key={idx} style={styles.ruleCode}>
+                      • {ant.fact} {ant.operator} {String(ant.value)}
+                    </Text>
+                  ))}
+                  <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>THEN (RESULT)</Text>
+                  <Text style={styles.ruleCode}>→ {rule.consequent.fact} = {String(rule.consequent.value)}</Text>
+                </View>
+              </Accordion>
             </View>
 
-            <Accordion title="Technical Details" icon="code">
-              <View style={styles.techDetailsBox}>
-                <Text style={styles.ruleSectionTitle}>SYSTEM IDENTIFIER</Text>
-                <Text style={styles.ruleCode}>{rule.id} (Priority: {rule.metadata.priority})</Text>
-                <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>IF (CONDITIONS)</Text>
-                {rule.antecedents.map((ant, idx) => (
-                  <Text key={idx} style={styles.ruleCode}>
-                    • {ant.fact} {ant.operator} {String(ant.value)}
-                  </Text>
-                ))}
-                <Text style={[styles.ruleSectionTitle, { marginTop: SPACING.md }]}>THEN (RESULT)</Text>
-                <Text style={styles.ruleCode}>→ {rule.consequent.fact} = {String(rule.consequent.value)}</Text>
-              </View>
-            </Accordion>
-
             <View style={styles.ruleActions}>
-              <Switch
-                value={isEnabled}
-                onValueChange={() => handleToggleRule(rule.id, isEnabled, isSystem)}
-                trackColor={{ false: COLORS.borderLight, true: COLORS.brandBlue }}
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Switch
+                  value={isEnabled}
+                  onValueChange={() => handleToggleRule(rule.id, isEnabled, isSystem)}
+                  trackColor={{ false: COLORS.borderLight, true: '#10B981' }}
+                />
+                <Text style={{ marginLeft: SPACING.sm, color: isEnabled ? '#10B981' : COLORS.textSecondary, fontWeight: '600' }}>
+                  {isEnabled ? 'Active' : 'Inactive'}
+                </Text>
+              </View>
               {!isSystem ? (
                 <Pressable onPress={() => handleDeleteRule(rule.id, isSystem)} style={styles.deleteBtn}>
-                  <Text style={styles.deleteText}>Delete Guideline</Text>
+                  <Text style={styles.deleteText}>Delete</Text>
                 </Pressable>
               ) : (
                 <Text style={styles.systemNote}>System Guideline (Read-Only)</Text>
@@ -320,47 +411,68 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
 
 
   return (
-    <SafeAreaView style={styles.root}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>SymptaCare</Text>
-            <Text style={styles.headerSubtitle}>Clinical Admin</Text>
+    <LinearGradient colors={['#D1FAE5', '#6EE7B7']} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={{ flex: 1 }}>
+      <View style={[styles.root, { backgroundColor: 'transparent' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        {/* ── Header ── */}
+        <View 
+          style={{ backgroundColor: 'transparent', paddingHorizontal: SPACING.xl, paddingTop: insets.top + SPACING.sm, paddingBottom: SPACING.md, marginBottom: SPACING.sm }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <BlurView intensity={60} tint="light" style={{ padding: 4, borderRadius: 20, marginRight: SPACING.md, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                <Image 
+                  source={require('../../assets/icons/logo.jpg')}
+                  style={{ width: 40, height: 40, borderRadius: 16 }}
+                />
+              </BlurView>
+              <View style={{ alignItems: 'flex-start' }}>
+                <Text style={{ fontSize: 22, fontWeight: '900', color: COLORS.brandNavy, letterSpacing: -0.5 }}>
+                  SymptaCare
+                </Text>
+                <Text style={{ fontSize: 13, color: COLORS.brandBlue, fontWeight: '700' }}>
+                  Clinical Admin
+                </Text>
+              </View>
+            </View>
+
+            <Pressable 
+              style={(state: any) => [
+                styles.homeBtn,
+                state.hovered && styles.homeBtnHovered,
+                state.pressed && styles.homeBtnPressed
+              ]} 
+              onPress={onSwitchToWelcome}
+            >
+              <Feather name="home" size={20} color={COLORS.brandNavy} />
+            </Pressable>
           </View>
-          <Pressable 
-            style={(state: any) => [
-              styles.homeBtn,
-              state.hovered && styles.homeBtnHovered,
-              state.pressed && styles.homeBtnPressed
-            ]} 
-            onPress={onSwitchToWelcome}
-          >
-            <Feather name="home" size={22} color={COLORS.brandNavy} />
-          </Pressable>
         </View>
-      </View>
 
       {/* ── Content ── */}
       <View style={styles.content}>
-        {activeTab === 'PATHWAYS' && renderListTab()}
+        {activeTab === 'PROTOCOLS' && renderListTab()}
         {activeTab === 'SIMULATOR' && <TestBench />}
-        {activeTab === 'SYNC' && renderSyncTab()}
-        {activeTab === 'SETTINGS' && <AdminSettings />}
+        {activeTab === 'SETTINGS' && <AdminSettings onImportSuccess={fetchRules} />}
       </View>
 
       {/* ── Bottom Nav ── */}
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        tabs={[
-          { id: 'PATHWAYS', label: 'Pathways', icon: 'git-branch' },
-          { id: 'SIMULATOR', label: 'Simulator', icon: 'activity' },
-          { id: 'SYNC', label: 'Sync', icon: 'database' },
-          { id: 'SETTINGS', label: 'Settings', icon: 'settings' }
-        ]}
-      />
-    </SafeAreaView>
+      {(!isBuilding || activeTab !== 'PROTOCOLS') && (
+        <BottomNav
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setActiveTab(tab as AdminTab);
+          }}
+          tabs={[
+            { id: 'PROTOCOLS', label: 'Protocols', icon: 'clipboard' },
+            { id: 'SIMULATOR', label: 'Simulator', icon: 'activity' },
+            { id: 'SETTINGS', label: 'Settings', icon: 'settings' }
+          ]}
+        />
+      )}
+    </View>
+    </LinearGradient>
   );
 }
 
@@ -410,16 +522,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   homeBtn: {
-    position: 'absolute',
-    right: SPACING.lg,
     backgroundColor: COLORS.bgSurface,
     borderRadius: RADIUS.pill,
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW.sm,
-    shadowOpacity: 0.05,
+    borderWidth: 1,
+    borderColor: 'rgba(230, 230, 230, 0.6)',
   },
   homeBtnHovered: {
     backgroundColor: '#F8FAFC',
@@ -433,14 +543,12 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.xl,
-    gap: SPACING.md,
     paddingBottom: SPACING.xxxl,
   },
   listHeaderRow: {
     flexDirection: 'column',
     alignItems: 'flex-start',
-    marginBottom: SPACING.xl,
-    gap: SPACING.base,
+    marginBottom: SPACING.md,
   },
   listActionGroup: {
     flexDirection: 'row',
@@ -531,12 +639,12 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   clinicalLabel: {
-    fontSize: TYPOGRAPHY.size.xs,
+    fontSize: TYPOGRAPHY.size.sm,
     fontWeight: TYPOGRAPHY.weight.bold,
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   clinicalAdvice: {
     fontSize: TYPOGRAPHY.size.base,
@@ -552,14 +660,16 @@ const styles = StyleSheet.create({
   },
   symptomPill: {
     backgroundColor: COLORS.bgPrimary,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.borderBrand,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   symptomPillText: {
-    fontSize: TYPOGRAPHY.size.sm,
+    fontSize: TYPOGRAPHY.size.base,
     color: COLORS.brandBlue,
     fontWeight: TYPOGRAPHY.weight.semibold,
     textTransform: 'capitalize',
@@ -616,22 +726,144 @@ const styles = StyleSheet.create({
   },
   riskTabsContainer: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.md,
   },
   riskTabBtn: {
-    flex: 1,
-    paddingVertical: SPACING.sm,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderLight,
+    backgroundColor: 'transparent',
+    marginRight: SPACING.sm,
+  },
+  riskTabText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginRight: SPACING.sm,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.bgSurface,
     borderRadius: RADIUS.pill,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    backgroundColor: COLORS.bgSurface,
+    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.lg,
   },
-  riskTabText: {
-    fontSize: TYPOGRAPHY.size.xs,
+  searchIcon: {
+    marginRight: SPACING.sm,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: SPACING.md,
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textPrimary,
+  },
+  newProtocolBtn: {
+    flex: 1,
+    backgroundColor: '#0F766E', // Teal
+    borderRadius: RADIUS.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+  },
+  newProtocolText: {
+    color: 'white',
+    fontSize: TYPOGRAPHY.size.base,
     fontWeight: '700',
+  },
+  filterBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  tiersLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '800',
     color: COLORS.textMuted,
+    letterSpacing: 1,
+    marginBottom: SPACING.md,
+  },
+  tierDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: SPACING.sm,
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: COLORS.bgSurface2,
+  },
+  countText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+  },
+  tierPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  tierPill: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+    marginRight: SPACING.md,
+  },
+  tierPillText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  ruleIdText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  documentIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.md,
+  },
+  guidelineSubtitle: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textMuted,
+    marginTop: 4,
+  },
+  adviceRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  adviceBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 8,
+    marginRight: SPACING.md,
+  },
+  adviceText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.base,
+    color: COLORS.textSecondary,
+    lineHeight: 22,
   },
 });
 

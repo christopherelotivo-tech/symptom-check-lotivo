@@ -2,100 +2,1231 @@
   {
     "id": "SYS_RULE_001",
     "antecedents": [
-      { "fact": "fever", "operator": "EQUALS", "value": true },
-      { "fact": "shortness_of_breath", "operator": "EQUALS", "value": true }
+      {
+        "fact": "chest_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "shortness_of_breath",
+        "operator": "EQUALS",
+        "value": true
+      }
     ],
-    "consequent": { "fact": "severe_respiratory_risk", "value": true },
+    "consequent": {
+      "fact": "possible_heart_attack___pulmonary_embolism",
+      "value": true
+    },
     "metadata": {
       "priority": 100,
       "riskCategory": "Red",
-      "triageAdvice": "Seek emergency care immediately. Call emergency services or go to the nearest ER.",
-      "description": "Fever combined with shortness of breath may indicate a severe respiratory condition such as pneumonia or a pulmonary embolism."
+      "description": "Possible Heart Attack / Pulmonary Embolism",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Loosen tight clothing and stay seated.",
+      "medicationAdvice": "Do not take anything by mouth unless previously prescribed nitroglycerin.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
     }
   },
   {
     "id": "SYS_RULE_002",
     "antecedents": [
-      { "fact": "fever", "operator": "EQUALS", "value": true },
-      { "fact": "cough", "operator": "EQUALS", "value": true }
+      {
+        "fact": "chest_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "palpitations",
+        "operator": "EQUALS",
+        "value": true
+      }
     ],
-    "consequent": { "fact": "possible_respiratory_infection", "value": true },
+    "consequent": {
+      "fact": "cardiac_event_risk___arrhythmia",
+      "value": true
+    },
     "metadata": {
-      "priority": 70,
-      "riskCategory": "Amber",
-      "triageAdvice": "Monitor symptoms closely. If fever exceeds 39°C or symptoms worsen, consult a doctor within 24 hours.",
-      "description": "Fever with cough is a common presentation of respiratory infections such as influenza or COVID-19."
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Cardiac Event Risk / Arrhythmia",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Loosen tight clothing and stay seated.",
+      "medicationAdvice": "Do not take anything by mouth unless previously prescribed nitroglycerin.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
     }
   },
   {
     "id": "SYS_RULE_003",
     "antecedents": [
-      { "fact": "possible_respiratory_infection", "operator": "EQUALS", "value": true },
-      { "fact": "shortness_of_breath", "operator": "EQUALS", "value": true }
+      {
+        "fact": "chest_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "dizziness",
+        "operator": "EQUALS",
+        "value": true
+      }
     ],
-    "consequent": { "fact": "severe_respiratory_risk", "value": true },
+    "consequent": {
+      "fact": "severe_cardiovascular_event",
+      "value": true
+    },
     "metadata": {
-      "priority": 90,
+      "priority": 100,
       "riskCategory": "Red",
-      "triageAdvice": "Seek emergency care immediately. Respiratory infection with breathing difficulty requires urgent assessment.",
-      "description": "A respiratory infection that progresses to shortness of breath is a high-risk escalation pattern."
+      "description": "Severe Cardiovascular Event",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Keep the patient calm and seated. Do not attempt to treat at home.",
+      "medicationAdvice": "Do not take any medications, food, or drink until evaluated by EMS.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
     }
   },
   {
     "id": "SYS_RULE_004",
     "antecedents": [
-      { "fact": "headache", "operator": "EQUALS", "value": true },
-      { "fact": "fever", "operator": "NOT_EQUALS", "value": true },
-      { "fact": "stiff_neck", "operator": "NOT_EQUALS", "value": true }
+      {
+        "fact": "shortness_of_breath",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "confusion",
+        "operator": "EQUALS",
+        "value": true
+      }
     ],
-    "consequent": { "fact": "mild_headache_likely", "value": true },
+    "consequent": {
+      "fact": "severe_hypoxia___respiratory_failure",
+      "value": true
+    },
     "metadata": {
-      "priority": 20,
-      "riskCategory": "Green",
-      "triageAdvice": "Rest, stay hydrated, and take over-the-counter pain relief if needed. See a doctor if headache persists beyond 48 hours.",
-      "description": "A headache without fever or neck stiffness is likely a tension-type or dehydration headache with no urgent concern."
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Severe Hypoxia / Respiratory Failure",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Sit upright to help open the airways.",
+      "medicationAdvice": "Use an emergency rescue inhaler if prescribed.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
     }
   },
   {
     "id": "SYS_RULE_005",
     "antecedents": [
-      { "fact": "headache", "operator": "EQUALS", "value": true },
-      { "fact": "stiff_neck", "operator": "EQUALS", "value": true },
-      { "fact": "fever", "operator": "EQUALS", "value": true }
+      {
+        "fact": "headache",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "stiff_neck",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      }
     ],
-    "consequent": { "fact": "possible_meningitis", "value": true },
+    "consequent": {
+      "fact": "possible_bacterial_meningitis",
+      "value": true
+    },
     "metadata": {
       "priority": 100,
       "riskCategory": "Red",
-      "triageAdvice": "Seek emergency care immediately. This combination of symptoms may indicate meningitis.",
-      "description": "The triad of headache, stiff neck, and fever is a classic presentation of bacterial meningitis — a medical emergency."
+      "description": "Possible Bacterial Meningitis",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Note the exact time symptoms started.",
+      "medicationAdvice": "Absolutely no medications, food, or drink.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
     }
   },
   {
     "id": "SYS_RULE_006",
     "antecedents": [
-      { "fact": "severe_respiratory_risk", "operator": "EQUALS", "value": true }
+      {
+        "fact": "confusion",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      }
     ],
-    "consequent": { "fact": "refer_to_emergency", "value": true },
+    "consequent": {
+      "fact": "possible_sepsis_or_encephalitis",
+      "value": true
+    },
     "metadata": {
-      "priority": 110,
+      "priority": 100,
       "riskCategory": "Red",
-      "triageAdvice": "You have been flagged for emergency referral. Please call 999 or go to the nearest emergency department.",
-      "description": "Any patient flagged with a severe respiratory risk must be referred to emergency services."
+      "description": "Possible Sepsis or Encephalitis",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Keep the patient calm and seated. Do not attempt to treat at home.",
+      "medicationAdvice": "Do not take any medications, food, or drink until evaluated by EMS.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
     }
   },
   {
     "id": "SYS_RULE_007",
     "antecedents": [
-      { "fact": "possible_meningitis", "operator": "EQUALS", "value": true }
+      {
+        "fact": "confusion",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "headache",
+        "operator": "EQUALS",
+        "value": true
+      }
     ],
-    "consequent": { "fact": "refer_to_emergency", "value": true },
+    "consequent": {
+      "fact": "possible_stroke_or_brain_hemorrhage",
+      "value": true
+    },
     "metadata": {
-      "priority": 110,
+      "priority": 100,
       "riskCategory": "Red",
-      "triageAdvice": "You have been flagged for emergency referral. Please call 999 or go to the nearest emergency department.",
-      "description": "Any patient flagged with possible meningitis must be referred to emergency services immediately."
+      "description": "Possible Stroke or Brain Hemorrhage",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Note the exact time symptoms started.",
+      "medicationAdvice": "Absolutely no medications, food, or drink.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
+    }
+  },
+  {
+    "id": "SYS_RULE_008",
+    "antecedents": [
+      {
+        "fact": "abdominal_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "confusion",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "severe_systemic_infection___internal_bleeding",
+      "value": true
+    },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Severe Systemic Infection / Internal Bleeding",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Isolate from others to prevent spreading. Drink warm fluids.",
+      "medicationAdvice": "Fever reducers (like Acetaminophen) can help manage temperature.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
+    }
+  },
+  {
+    "id": "SYS_RULE_009",
+    "antecedents": [
+      {
+        "fact": "rash",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "shortness_of_breath",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "anaphylaxis___severe_allergic_reaction",
+      "value": true
+    },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Anaphylaxis / Severe Allergic Reaction",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Keep the patient calm and seated. Do not attempt to treat at home.",
+      "medicationAdvice": "Do not take any medications, food, or drink until evaluated by EMS.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
+    }
+  },
+  {
+    "id": "SYS_RULE_010",
+    "antecedents": [
+      {
+        "fact": "jaundice",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "confusion",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "acute_liver_failure",
+      "value": true
+    },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Acute Liver Failure",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Keep the patient calm and seated. Do not attempt to treat at home.",
+      "medicationAdvice": "Do not take any medications, food, or drink until evaluated by EMS.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
+    }
+  },
+  {
+    "id": "SYS_RULE_011",
+    "antecedents": [
+      {
+        "fact": "chest_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "nausea",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fatigue",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "atypical_myocardial_infarction__heart_attack_",
+      "value": true
+    },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Atypical Myocardial Infarction (Heart Attack)",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Loosen tight clothing and stay seated.",
+      "medicationAdvice": "Do not take anything by mouth unless previously prescribed nitroglycerin.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
+    }
+  },
+  {
+    "id": "SYS_RULE_012",
+    "antecedents": [
+      {
+        "fact": "dizziness",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "palpitations",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "shortness_of_breath",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "critical_cardiac_arrhythmia",
+      "value": true
+    },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Critical Cardiac Arrhythmia",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Loosen tight clothing and stay seated.",
+      "medicationAdvice": "Do not take anything by mouth unless previously prescribed nitroglycerin.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
+    }
+  },
+  {
+    "id": "SYS_RULE_013",
+    "antecedents": [
+      {
+        "fact": "swelling",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "shortness_of_breath",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "acute_heart_failure___pulmonary_edema",
+      "value": true
+    },
+    "metadata": {
+      "priority": 100,
+      "riskCategory": "Red",
+      "description": "Acute Heart Failure / Pulmonary Edema",
+      "triageAdvice": "Immediate emergency medical attention is required.",
+      "selfCareAdvice": "Loosen tight clothing and stay seated.",
+      "medicationAdvice": "Do not take anything by mouth unless previously prescribed nitroglycerin.",
+      "escalationTrigger": "Call 911 or go to the nearest emergency room immediately."
+    }
+  },
+  {
+    "id": "SYS_RULE_014",
+    "antecedents": [
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "cough",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "body_aches",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "possible_influenza__flu_",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Possible Influenza (Flu)",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Isolate from others to prevent spreading. Drink warm fluids.",
+      "medicationAdvice": "Fever reducers (like Acetaminophen) can help manage temperature.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_015",
+    "antecedents": [
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "cough",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "shortness_of_breath",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "moderate_respiratory_infection",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Moderate Respiratory Infection",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Sit upright to help open the airways.",
+      "medicationAdvice": "Use an emergency rescue inhaler if prescribed.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_016",
+    "antecedents": [
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "sore_throat",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "swelling",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "possible_strep_throat_with_lymphadenopathy",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Possible Strep Throat with Lymphadenopathy",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Rest, stay hydrated, and monitor your symptoms closely.",
+      "medicationAdvice": "Avoid taking new medications without consulting a doctor first.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_017",
+    "antecedents": [
+      {
+        "fact": "abdominal_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "possible_appendicitis___abdominal_infection",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Possible Appendicitis / Abdominal Infection",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Isolate from others to prevent spreading. Drink warm fluids.",
+      "medicationAdvice": "Fever reducers (like Acetaminophen) can help manage temperature.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_018",
+    "antecedents": [
+      {
+        "fact": "abdominal_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "nausea",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "diarrhea",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "severe_gastroenteritis",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Severe Gastroenteritis",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Eat light, bland foods (BRAT diet) and sip clear liquids.",
+      "medicationAdvice": "Avoid NSAIDs like ibuprofen which can irritate the stomach.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_019",
+    "antecedents": [
+      {
+        "fact": "chest_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "cough",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "possible_pneumonia___pleurisy",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Possible Pneumonia / Pleurisy",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Rest, stay hydrated, and monitor your symptoms closely.",
+      "medicationAdvice": "Avoid taking new medications without consulting a doctor first.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_020",
+    "antecedents": [
+      {
+        "fact": "headache",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "chills",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "febrile_illness__possible_dengue___malaria_",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Febrile Illness (Possible Dengue / Malaria)",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Rest, stay hydrated, and monitor your symptoms closely.",
+      "medicationAdvice": "Avoid taking new medications without consulting a doctor first.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_021",
+    "antecedents": [
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "rash",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "viral_infection_with_exanthem",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Viral Infection with Exanthem",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Isolate from others to prevent spreading. Drink warm fluids.",
+      "medicationAdvice": "Fever reducers (like Acetaminophen) can help manage temperature.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_022",
+    "antecedents": [
+      {
+        "fact": "jaundice",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "abdominal_pain",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "hepatitis___biliary_obstruction",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Hepatitis / Biliary Obstruction",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Rest, stay hydrated, and monitor your symptoms closely.",
+      "medicationAdvice": "Avoid taking new medications without consulting a doctor first.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_023",
+    "antecedents": [
+      {
+        "fact": "dizziness",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "nausea",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "headache",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "vertigo___inner_ear_disturbance",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Vertigo / Inner Ear Disturbance",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Rest, stay hydrated, and monitor your symptoms closely.",
+      "medicationAdvice": "Avoid taking new medications without consulting a doctor first.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_024",
+    "antecedents": [
+      {
+        "fact": "swelling",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fatigue",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "possible_kidney_or_heart_issue",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Possible Kidney or Heart Issue",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Loosen tight clothing and stay seated.",
+      "medicationAdvice": "Do not take anything by mouth unless previously prescribed nitroglycerin.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_025",
+    "antecedents": [
+      {
+        "fact": "palpitations",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "dizziness",
+        "operator": "EQUALS",
+        "value": false
+      },
+      {
+        "fact": "chest_pain",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "benign_arrhythmia_or_thyroid_issue",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Benign Arrhythmia or Thyroid Issue",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Rest, stay hydrated, and monitor your symptoms closely.",
+      "medicationAdvice": "Avoid taking new medications without consulting a doctor first.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_026",
+    "antecedents": [
+      {
+        "fact": "cough",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fatigue",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "loss_of_appetite",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "prolonged_viral_infection___post_viral_syndrome",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Prolonged Viral Infection / Post-Viral Syndrome",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Isolate from others to prevent spreading. Drink warm fluids.",
+      "medicationAdvice": "Fever reducers (like Acetaminophen) can help manage temperature.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_027",
+    "antecedents": [
+      {
+        "fact": "sore_throat",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "rash",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "scarlet_fever___systemic_infection",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Scarlet Fever / Systemic Infection",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Isolate from others to prevent spreading. Drink warm fluids.",
+      "medicationAdvice": "Fever reducers (like Acetaminophen) can help manage temperature.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_028",
+    "antecedents": [
+      {
+        "fact": "abdominal_pain",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "loss_of_appetite",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "nausea",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "early_appendicitis___peptic_ulcer",
+      "value": true
+    },
+    "metadata": {
+      "priority": 60,
+      "riskCategory": "Amber",
+      "description": "Early Appendicitis / Peptic Ulcer",
+      "triageAdvice": "Please seek evaluation from a healthcare provider soon.",
+      "selfCareAdvice": "Rest, stay hydrated, and monitor your symptoms closely.",
+      "medicationAdvice": "Avoid taking new medications without consulting a doctor first.",
+      "escalationTrigger": "If symptoms suddenly worsen or you develop difficulty breathing, go to the ER."
+    }
+  },
+  {
+    "id": "SYS_RULE_029",
+    "antecedents": [
+      {
+        "fact": "cough",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "runny_nose",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "common_cold",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Common Cold",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_030",
+    "antecedents": [
+      {
+        "fact": "sore_throat",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "runny_nose",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "mild_upper_respiratory_tract_infection",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Mild Upper Respiratory Tract Infection",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Sit upright to help open the airways.",
+      "medicationAdvice": "Use an emergency rescue inhaler if prescribed.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_031",
+    "antecedents": [
+      {
+        "fact": "headache",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fatigue",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "tension_headache___exhaustion",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Tension Headache / Exhaustion",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Lie down in a dark, quiet room with a cool compress.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_032",
+    "antecedents": [
+      {
+        "fact": "nausea",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "diarrhea",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "mild_food_poisoning___stomach_upset",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Mild Food Poisoning / Stomach Upset",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Eat light, bland foods (BRAT diet) and sip clear liquids.",
+      "medicationAdvice": "Avoid NSAIDs like ibuprofen which can irritate the stomach.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_033",
+    "antecedents": [
+      {
+        "fact": "runny_nose",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "rash",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "allergic_rhinitis__hay_fever_",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Allergic Rhinitis (Hay Fever)",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_034",
+    "antecedents": [
+      {
+        "fact": "body_aches",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fatigue",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "mild_myalgia__muscle_fatigue_",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Mild Myalgia (Muscle Fatigue)",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_035",
+    "antecedents": [
+      {
+        "fact": "rash",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      },
+      {
+        "fact": "shortness_of_breath",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "contact_dermatitis___mild_allergic_rash",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Contact Dermatitis / Mild Allergic Rash",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_036",
+    "antecedents": [
+      {
+        "fact": "chills",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "mild_chills__non_febrile_",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Mild Chills (Non-febrile)",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_037",
+    "antecedents": [
+      {
+        "fact": "fatigue",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "loss_of_appetite",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "mild_exhaustion___stress",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Mild Exhaustion / Stress",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_038",
+    "antecedents": [
+      {
+        "fact": "headache",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "nausea",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "migraine__uncomplicated_",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Migraine (Uncomplicated)",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Lie down in a dark, quiet room with a cool compress.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_039",
+    "antecedents": [
+      {
+        "fact": "cough",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "sore_throat",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "mild_throat_irritation___pharyngitis",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Mild Throat Irritation / Pharyngitis",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
+    }
+  },
+  {
+    "id": "SYS_RULE_040",
+    "antecedents": [
+      {
+        "fact": "diarrhea",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "abdominal_pain",
+        "operator": "EQUALS",
+        "value": false
+      },
+      {
+        "fact": "fever",
+        "operator": "EQUALS",
+        "value": false
+      }
+    ],
+    "consequent": {
+      "fact": "dietary_indiscretion___mild_diarrhea",
+      "value": true
+    },
+    "metadata": {
+      "priority": 20,
+      "riskCategory": "Green",
+      "description": "Dietary Indiscretion / Mild Diarrhea",
+      "triageAdvice": "These symptoms can typically be managed at home.",
+      "selfCareAdvice": "Get plenty of rest and stay hydrated.",
+      "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
+      "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
     }
   }
 ]
-

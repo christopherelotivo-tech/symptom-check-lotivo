@@ -126,11 +126,78 @@ export default function TestBench() {
     .filter((r): r is Rule => r !== undefined)
     .sort((a, b) => {
       const diff = (riskRank[b.metadata.riskCategory] || 0) - (riskRank[a.metadata.riskCategory] || 0);
-      return diff !== 0 ? diff : b.metadata.priority - a.metadata.priority;
+      if (diff !== 0) return diff;
+      const prioDiff = b.metadata.priority - a.metadata.priority;
+      if (prioDiff !== 0) return prioDiff;
+      // If same risk and priority, the more specific rule (more conditions) wins!
+      return b.antecedents.length - a.antecedents.length;
     })[0];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.containerContent}>
+      
+      {/* ── LIVE OUTPUT AT THE TOP ── */}
+      <View style={[styles.card, styles.outputCard]}>
+        <View style={styles.panelHeaderRow}>
+          <Text style={styles.outputTitle}>Live Assessment Result</Text>
+          <View style={styles.liveBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
+        </View>
+
+        <View style={styles.outcomeBox}>
+          <Text style={styles.outcomeLabel}>Computed Triage Result</Text>
+          {finalOutcome ? (
+            <View style={[styles.outcomeBadge, { backgroundColor: getRiskColor(finalOutcome.metadata.riskCategory) }]}>
+              <Text style={styles.outcomeBadgeText}>
+                {finalOutcome.metadata.riskCategory.toUpperCase()} RISK
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.outcomeEmpty}>No matching rule fired. Select symptoms below to test.</Text>
+          )}
+          {finalOutcome && (
+            <Text style={styles.outcomeAdvice}>{finalOutcome.metadata.triageAdvice}</Text>
+          )}
+        </View>
+
+        <Accordion title="View Engine Trace (Why this result?)" icon="terminal">
+          <View style={styles.traceContainer}>
+            <View style={styles.logSection}>
+              <Text style={styles.logHeader}>Working Memory Imputed</Text>
+              {Object.entries({ ...mapAssessmentsToMemory(Object.values(assessments)), ...overrideMemory })
+                .filter(([, v]) => v.value)
+                .map(([f]) => (
+                  <Text key={f} style={styles.logEntry}>
+                    <Text style={{color: COLORS.brandGreen}}>★</Text> {f}
+                  </Text>
+                ))}
+            </View>
+
+            <View style={styles.logSection}>
+              <Text style={styles.logHeader}>Rules Fired ({firedRules.length})</Text>
+              {firedRules.map((e, idx) => (
+                <Text key={e.id} style={styles.logEntry}>
+                  <Text style={{color: COLORS.warning}}>⚡</Text> {idx + 1}. {e.ruleId}
+                </Text>
+              ))}
+              {firedRules.length === 0 && <Text style={styles.logEmpty}>None</Text>}
+            </View>
+
+            <View style={styles.logSection}>
+              <Text style={styles.logHeader}>Derived Facts ({derivedFacts.length})</Text>
+              {derivedFacts.map((e, idx) => (
+                <Text key={e.id} style={styles.logEntry}>
+                  <Text style={{color: COLORS.brandCyan}}>+ </Text> {e.fact} = {String(e.value)}
+                </Text>
+              ))}
+              {derivedFacts.length === 0 && <Text style={styles.logEmpty}>None</Text>}
+            </View>
+          </View>
+        </Accordion>
+      </View>
+
       {/* ── Patient Simulation Panel ── */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Simulate Patient</Text>
@@ -138,25 +205,29 @@ export default function TestBench() {
         
         <View style={styles.simulationSection}>
           <Text style={styles.sectionHeading}>Symptoms</Text>
-          <View style={styles.grid}>
-            {ALL_BASE_SYMPTOMS.map(symptom => {
-              const isActive = assessments[symptom.factKey]?.active === true;
-              return (
-                <View key={symptom.factKey} style={styles.gridItem}>
-                  <Checkbox
-                    label={symptom.label}
-                    checked={isActive}
-                    onChange={val => handleToggleBaseSymptom(symptom.factKey, val, symptom.weight)}
-                  />
-                </View>
-              );
-            })}
-          </View>
+          {SYMPTOM_CATEGORIES.map(category => (
+            <Accordion key={category.title} title={category.displayName} icon={category.iconName as any} defaultExpanded={false}>
+              <View style={[styles.grid, { marginTop: SPACING.md }]}>
+                {category.symptoms.map(symptom => {
+                  const isActive = assessments[symptom.factKey]?.active === true;
+                  return (
+                    <View key={symptom.factKey} style={styles.gridItem}>
+                      <Checkbox
+                        label={symptom.label}
+                        checked={isActive}
+                        onChange={val => handleToggleBaseSymptom(symptom.factKey, val, symptom.weight)}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            </Accordion>
+          ))}
         </View>
 
         {Object.values(assessments).filter(a => a.active).length > 0 && (
           <View style={[styles.simulationSection, { marginTop: SPACING.xl }]}>
-            <Text style={styles.sectionHeading}>Context</Text>
+            <Text style={styles.sectionHeading}>Context & Modifiers</Text>
             {Object.values(assessments)
               .filter(a => a.active)
               .map(a => (
@@ -195,68 +266,6 @@ export default function TestBench() {
                 );
               })
             )}
-          </View>
-        </Accordion>
-      </View>
-
-      {/* ── Clinical Assessment Panel ── */}
-      <View style={[styles.card, styles.outputCard]}>
-        <View style={styles.panelHeaderRow}>
-          <Text style={styles.outputTitle}>Assessment Result</Text>
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
-          </View>
-        </View>
-
-        <View style={styles.outcomeBox}>
-          <Text style={styles.outcomeLabel}>Computed Triage Result</Text>
-          {finalOutcome ? (
-            <View style={[styles.outcomeBadge, { backgroundColor: getRiskColor(finalOutcome.metadata.riskCategory) }]}>
-              <Text style={styles.outcomeBadgeText}>
-                {finalOutcome.metadata.riskCategory.toUpperCase()} RISK
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.outcomeEmpty}>No matching rule fired</Text>
-          )}
-          {finalOutcome && (
-            <Text style={styles.outcomeAdvice}>{finalOutcome.metadata.triageAdvice}</Text>
-          )}
-        </View>
-
-        <Accordion title="Why This Result? (System Trace)" icon="terminal">
-          <View style={styles.traceContainer}>
-            <View style={styles.logSection}>
-              <Text style={styles.logHeader}>Working Memory Imputed</Text>
-              {Object.entries({ ...mapAssessmentsToMemory(Object.values(assessments)), ...overrideMemory })
-                .filter(([, v]) => v.value)
-                .map(([f]) => (
-                  <Text key={f} style={styles.logEntry}>
-                    <Text style={{color: COLORS.brandGreen}}>★</Text> {f}
-                  </Text>
-                ))}
-            </View>
-
-            <View style={styles.logSection}>
-              <Text style={styles.logHeader}>Rules Fired ({firedRules.length})</Text>
-              {firedRules.map((e, idx) => (
-                <Text key={e.id} style={styles.logEntry}>
-                  <Text style={{color: COLORS.warning}}>⚡</Text> {idx + 1}. {e.ruleId}
-                </Text>
-              ))}
-              {firedRules.length === 0 && <Text style={styles.logEmpty}>None</Text>}
-            </View>
-
-            <View style={styles.logSection}>
-              <Text style={styles.logHeader}>Derived Facts ({derivedFacts.length})</Text>
-              {derivedFacts.map((e, idx) => (
-                <Text key={e.id} style={styles.logEntry}>
-                  <Text style={{color: COLORS.brandCyan}}>+ </Text> {e.fact} = {String(e.value)}
-                </Text>
-              ))}
-              {derivedFacts.length === 0 && <Text style={styles.logEmpty}>None</Text>}
-            </View>
           </View>
         </Accordion>
       </View>

@@ -67,8 +67,8 @@ export const SYMPTOM_CATEGORIES = [
   {
     title: 'dermatological',
     displayName: 'Skin & Visible Signs',
-    iconName: 'hand' as const,
-    iconType: 'MaterialCommunityIcons',
+    iconName: 'eye' as const,
+    iconType: 'Feather',
     symptoms: [
       { factKey: 'rash', label: 'Skin rash', weight: 0.2 },
       { factKey: 'swelling', label: 'Swelling (edema)', weight: 0.3 },
@@ -101,16 +101,40 @@ export default function SymptomForm({ memory, onToggle }: SymptomFormProps) {
     return allSymptoms.filter(s => s.label.toLowerCase().includes(lowerQ));
   }, [searchQuery, allSymptoms]);
 
-  return (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-      <Text style={styles.formTitle}>What symptom is bothering you most?</Text>
-      <Text style={styles.formSubtitle}>
-        For example, you can search 'fever' or 'headache'.
-      </Text>
+  const selectedCount = Object.values(memory).filter(f => f.value && f.weight > 0).length;
 
+  const renderCounter = () => (
+    <View style={{
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      backgroundColor: selectedCount > 0 ? COLORS.triageGreenBg : COLORS.bgSurface,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: 4,
+      borderRadius: RADIUS.pill,
+      borderWidth: 1,
+      borderColor: selectedCount > 0 ? COLORS.triageGreenBorder : COLORS.borderLight
+    }}>
+      <Feather 
+        name={selectedCount > 0 ? "check-circle" : "info"} 
+        size={12} 
+        color={selectedCount > 0 ? COLORS.brandGreen : COLORS.textMuted} 
+        style={{ marginRight: 4 }}
+      />
+      <Text style={{
+        fontSize: TYPOGRAPHY.size.xs,
+        fontWeight: '700',
+        color: selectedCount > 0 ? COLORS.brandGreen : COLORS.textMuted
+      }}>
+        {selectedCount} selected
+      </Text>
+    </View>
+  );
+
+  return (
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} scrollEnabled={false}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Feather name="search" size={20} color={COLORS.brandGreen} style={styles.searchIcon} />
+        <Feather name="search" size={20} color={COLORS.brandBlue} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search for a symptom"
@@ -127,7 +151,10 @@ export default function SymptomForm({ memory, onToggle }: SymptomFormProps) {
 
       {searchQuery.trim().length > 0 ? (
         <View style={styles.resultsContainer}>
-          <Text style={styles.resultsHeader}>Symptoms found: {filteredSymptoms.length}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md }}>
+            <Text style={[styles.resultsHeader, { marginBottom: 0 }]}>Symptoms found: {filteredSymptoms.length}</Text>
+            {renderCounter()}
+          </View>
           {filteredSymptoms.map(symptom => {
             const isActive = memory[symptom.factKey]?.value === true;
             return (
@@ -142,14 +169,17 @@ export default function SymptomForm({ memory, onToggle }: SymptomFormProps) {
         </View>
       ) : (
         <>
-          <Text style={styles.popularHeader}>Browse Categories</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.lg }}>
+            <Text style={[styles.popularHeader, { marginBottom: 0 }]}>Browse Categories</Text>
+            {renderCounter()}
+          </View>
           {SYMPTOM_CATEGORIES.map((category) => (
             <View key={category.title} style={styles.categoryCard}>
               <View style={styles.categoryHeader}>
                 {category.iconType === 'Feather' ? (
-                  <Feather name={category.iconName as any} size={20} color={COLORS.brandGreen} style={styles.categoryIcon} />
+                  <Feather name={category.iconName as any} size={20} color={COLORS.brandBlue} style={styles.categoryIcon} />
                 ) : (
-                  <MaterialCommunityIcons name={category.iconName as any} size={20} color={COLORS.brandGreen} style={styles.categoryIcon} />
+                  <MaterialCommunityIcons name={category.iconName as any} size={20} color={COLORS.brandBlue} style={styles.categoryIcon} />
                 )}
                 <Text style={styles.categoryTitle}>{category.displayName}</Text>
               </View>
@@ -180,7 +210,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: SPACING.xl,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.sm,
     paddingBottom: SPACING.xxxl,
   },
   formTitle: {
@@ -202,7 +233,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.bgSurface,
     borderWidth: 2,
-    borderColor: 'rgba(16, 185, 129, 0.2)', // Light brand green border
+    borderColor: 'rgba(89, 158, 214, 0.2)', // Light brand blue border
     borderRadius: RADIUS.pill,
     paddingHorizontal: SPACING.lg,
     height: 56,

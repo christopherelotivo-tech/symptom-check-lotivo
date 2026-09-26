@@ -3,13 +3,18 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  Image,
+  LayoutAnimation,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 // ── Engine (DO NOT TOUCH) ────────────────────────────────────────────────────
 import { InferenceEngine }   from '../engine/InferenceEngine';
@@ -35,6 +40,7 @@ import SymptomContextCard from '../components/SymptomContextCard';
 import PatientSymptomSummary from '../components/PatientSymptomSummary';
 import PrimaryButton from '../components/ui/PrimaryButton';
 import LoadingState from '../components/ui/LoadingState';
+import AssessmentReport from '../components/AssessmentReport';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOW } from '../theme/tokens';
 
 // ---------------------------------------------------------------------------
@@ -54,29 +60,6 @@ function deriveTriageResult(
     .filter((e): e is RuleFiredAuditEntry => e.type === 'RULE_FIRED')
     .map(e => e.ruleId);
 
-  if (overrideEntry) {
-    return {
-      riskCategory: overrideEntry.newRiskCategory,
-      triageAdvice: 'We noticed a combination of severe symptoms. Please seek clinical evaluation immediately.',
-      description:  'Your combined symptoms triggered an automatic safety escalation. Please do not ignore this result.',
-      firedRuleIds,
-    };
-  }
-
-  if (firedRuleIds.length === 0) {
-    // Fallback: If no rules fired but the user did report symptoms, default to Green.
-    const hasSymptoms = Object.values(memory).some(m => m.value);
-    if (hasSymptoms) {
-      return {
-        riskCategory: 'Green',
-        triageAdvice: 'Your symptoms appear to be safe. Rest, stay hydrated, and monitor your condition. Consult a healthcare professional if symptoms worsen.',
-        description:  'No severe risk patterns were detected based on your reported symptoms.',
-        firedRuleIds: []
-      };
-    }
-    return null;
-  }
-
   const ruleMap = new Map(rules.map(r => [r.id, r]));
 
   const primaryRule = firedRuleIds
@@ -86,17 +69,62 @@ function deriveTriageResult(
       const riskDiff =
         (RISK_RANK[b.metadata.riskCategory] ?? 0) -
         (RISK_RANK[a.metadata.riskCategory] ?? 0);
-      return riskDiff !== 0 ? riskDiff : b.metadata.priority - a.metadata.priority;
+      if (riskDiff !== 0) return riskDiff;
+      const prioDiff = b.metadata.priority - a.metadata.priority;
+      if (prioDiff !== 0) return prioDiff;
+      // If same risk and priority, the more specific rule (more conditions) wins!
+      return b.antecedents.length - a.antecedents.length;
     })[0];
 
-  if (!primaryRule) return null;
+  // If we have an override, but no rule fired, or the rule that fired is lower risk than the override
+  if (overrideEntry && (!primaryRule || (RISK_RANK[primaryRule.metadata.riskCategory] < RISK_RANK[overrideEntry.newRiskCategory]))) {
+    return {
+      riskCategory: overrideEntry.newRiskCategory,
+      triageAdvice: primaryRule
+        ? primaryRule.metadata.triageAdvice + '\n\nAdditionally, due to the high severity/number of symptoms reported, you have been automatically escalated. Please seek clinical evaluation immediately.'
+        : 'We noticed a combination of severe symptoms. Please seek clinical evaluation immediately.',
+      selfCareAdvice: primaryRule?.metadata.selfCareAdvice,
+      medicationAdvice: primaryRule?.metadata.medicationAdvice,
+      escalationTrigger: primaryRule?.metadata.escalationTrigger,
+      description: primaryRule
+        ? primaryRule.metadata.description + ' (Escalated to Red)'
+        : 'Your combined symptoms triggered an automatic safety escalation. Please do not ignore this result.',
+      firedRuleIds,
+    };
+  }
 
-  return {
-    riskCategory: primaryRule.metadata.riskCategory,
-    triageAdvice: primaryRule.metadata.triageAdvice,
-    description:  primaryRule.metadata.description,
-    firedRuleIds,
-  };
+  // Otherwise, use the primary rule (and combine advice if multiple top-risk rules fired)
+  if (primaryRule) {
+    const topRiskRules = firedRuleIds
+      .map(id => ruleMap.get(id))
+      .filter((r): r is Rule => r !== undefined && r.metadata.riskCategory === primaryRule.metadata.riskCategory);
+
+    const combinedAdvice = Array.from(new Set(topRiskRules.map(r => r.metadata.triageAdvice))).join('\n\n');
+    const combinedDesc = Array.from(new Set(topRiskRules.map(r => r.metadata.description))).join(' + ');
+
+    return {
+      riskCategory: primaryRule.metadata.riskCategory,
+      triageAdvice: combinedAdvice,
+      selfCareAdvice: primaryRule.metadata.selfCareAdvice,
+      medicationAdvice: primaryRule.metadata.medicationAdvice,
+      escalationTrigger: primaryRule.metadata.escalationTrigger,
+      description: combinedDesc,
+      firedRuleIds,
+    };
+  }
+
+  // Fallback: If no rules fired but the user did report symptoms, default to Green.
+  const hasSymptoms = Object.values(memory).some(m => m.value);
+  if (hasSymptoms) {
+    return {
+      riskCategory: 'Green',
+      triageAdvice: 'Your symptoms appear to be safe. Rest, stay hydrated, and monitor your condition. Consult a healthcare professional if symptoms worsen.',
+      description:  'No severe risk patterns were detected based on your reported symptoms.',
+      firedRuleIds: []
+    };
+  }
+  
+  return null;
 }
 
 function buildUserInputEntries(memory: WorkingMemory): UserInputAuditEntry[] {
@@ -119,6 +147,7 @@ type WizardStep = 'SYMPTOMS' | 'CONTEXT' | 'ANALYZING' | 'RESULTS';
 
 interface UserAssessmentScreenProps {
   onSwitchToWelcome: () => void;
+  onShowHistory?: () => void;
 }
 
 const getSymptomLabel = (factKey: string) => {
@@ -135,7 +164,8 @@ const getSymptomLabel = (factKey: string) => {
 
 import { SymptomAssessment, mapAssessmentsToMemory } from '../utils/ContextMapper';
 
-export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessmentScreenProps) {
+export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory }: UserAssessmentScreenProps) {
+  const insets = useSafeAreaInsets();
   const [rules,        setRules]        = useState<Rule[]>([]);
   
   // Phase 1: New Data Architecture
@@ -238,22 +268,28 @@ export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessme
     []
   );
 
+  const goToStep = (step: WizardStep) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setActiveStep(step);
+  };
+
   const handleNextStep = () => {
     if (activeStep === 'SYMPTOMS') {
       const hasSymptoms = Object.values(assessments).some(a => a.active);
-      if (hasSymptoms) setActiveStep('CONTEXT');
-      else setActiveStep('ANALYZING');
+      if (hasSymptoms) goToStep('CONTEXT');
+      else goToStep('ANALYZING');
     } else if (activeStep === 'CONTEXT') {
-      setActiveStep('ANALYZING');
+      goToStep('ANALYZING');
     }
   };
 
   const handlePrevStep = () => {
-    if (activeStep === 'RESULTS') setActiveStep('SYMPTOMS');
-    else if (activeStep === 'CONTEXT') setActiveStep('SYMPTOMS');
+    if (activeStep === 'RESULTS') goToStep('SYMPTOMS');
+    else if (activeStep === 'CONTEXT') goToStep('SYMPTOMS');
   };
 
   const handleResetAssessment = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAssessments({});
     setTriageResult(null);
     setAuditTrail([]);
@@ -265,7 +301,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessme
     if (activeStep === 'ANALYZING') {
       const timer = setTimeout(() => {
         runEvaluation(memory, rules);
-        setActiveStep('RESULTS');
+        goToStep('RESULTS');
       }, 1000); // 1 second trust-building delay
       return () => clearTimeout(timer);
     }
@@ -296,74 +332,121 @@ export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessme
 
   // ── Main render ───────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.root}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        {activeStep !== 'SYMPTOMS' && (
-          <Pressable 
-            style={styles.backBtn}
-            onPress={handlePrevStep}
-            accessibilityRole="button"
-          >
-            <Feather name="arrow-left" size={20} color={COLORS.brandNavy} />
-          </Pressable>
-        )}
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>SymptaCare</Text>
-          <Text style={styles.headerSubtitle}>
-            {activeStep === 'RESULTS' ? 'Your Assessment' : 'Symptom Check'}
-          </Text>
-        </View>
-        <Pressable
-          style={(state: any) => [
-            styles.homeBtn,
-            state.hovered && styles.homeBtnHovered,
-            state.pressed && styles.homeBtnPressed,
-          ]}
-          onPress={onSwitchToWelcome}
-          accessibilityRole="button"
-          accessibilityLabel="Back to Home"
-        >
-          <Feather name="home" size={20} color={COLORS.brandNavy} />
-        </Pressable>
-      </View>
-
-      {/* ── Content ── */}
-      <View style={styles.content}>
-        {activeStep === 'SYMPTOMS' && (
-          <View style={styles.symptomsContent}>
-            {selectedCount > 0 && (
+    <LinearGradient colors={['#D1FAE5', '#6EE7B7']} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={{ flex: 1 }}>
+      <View style={[styles.root, { backgroundColor: 'transparent' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        {/* ── Content ── */}
+        <View style={styles.content}>
+          {activeStep === 'SYMPTOMS' && (
+            <>
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {/* NEW HERO SECTION */}
               <View 
-                style={styles.counterBanner} 
-                accessibilityLiveRegion="polite"
+                style={{ backgroundColor: 'transparent', paddingHorizontal: SPACING.xl, paddingTop: insets.top + SPACING.sm, paddingBottom: SPACING.md }}
               >
-                <Feather name="check-circle" size={14} color={COLORS.brandGreen} />
-                <Text style={styles.counterText}>
-                  {selectedCount} symptom{selectedCount !== 1 ? 's' : ''} selected
+                {/* Top Row: Titles (Left) + Home Button (Right) */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ alignItems: 'flex-start' }}>
+                    <Text style={{ fontSize: 24, fontWeight: '900', color: COLORS.brandNavy, letterSpacing: -0.5 }}>
+                      SymptaCare
+                    </Text>
+                    <Text style={{ fontSize: 14, color: COLORS.brandBlue, fontWeight: '700' }}>
+                      Symptom Check
+                    </Text>
+                  </View>
+
+                  <Pressable onPress={onSwitchToWelcome} style={{ padding: SPACING.sm, marginRight: -SPACING.sm }}>
+                    <Feather name="home" size={24} color={COLORS.brandNavy} />
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Centered Logo & Question (Floating in body) */}
+              <View style={{ alignItems: 'center', paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
+                <BlurView intensity={60} tint="light" style={{ padding: 6, borderRadius: 38, marginBottom: SPACING.lg, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                  <Image 
+                    source={require('../../assets/icons/logo.jpg')}
+                    style={{ width: 90, height: 90, borderRadius: 32 }}
+                  />
+                </BlurView>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.brandNavy, textAlign: 'center', lineHeight: 32, marginBottom: SPACING.xs, paddingHorizontal: SPACING.xxl }}>
+                  What symptom is bothering you most?
+                </Text>
+                <Text style={{ fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', paddingHorizontal: SPACING.xxl }}>
+                  For example, you can search 'fever' or 'headache'.
                 </Text>
               </View>
+
+            <View style={styles.symptomsContent}>
+              <SymptomForm memory={memory} onToggle={handleToggle} />
+            </View>
+          </ScrollView>
+          <View style={{ paddingHorizontal: SPACING.xl, paddingVertical: SPACING.lg, backgroundColor: 'transparent' }}>
+            {selectedCount === 1 && (
+              <Text style={{ textAlign: 'center', color: COLORS.triageAmberIcon, fontWeight: '600', fontSize: 13, marginBottom: SPACING.sm }}>
+                ⚠️  Please select at least 2 symptoms to continue
+              </Text>
             )}
-            <SymptomForm memory={memory} onToggle={handleToggle} />
             <PrimaryButton 
               label="Next"
               onPress={handleNextStep}
-              disabled={selectedCount === 0}
-              style={{ marginHorizontal: SPACING.xl, marginBottom: SPACING.xxxl }}
+              disabled={selectedCount < 2}
             />
           </View>
+          </>
         )}
 
         {activeStep === 'CONTEXT' && (
           <View style={styles.symptomsContent}>
+            <>
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ padding: SPACING.xl, paddingBottom: SPACING.xxxl }}
               showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.formTitle}>Tell us a bit more.</Text>
-              <Text style={styles.formSubtitle}>
-                This helps us give you a more accurate result. All questions below are optional.
-              </Text>
+              {/* HERO SECTION */}
+              <View 
+                style={{ backgroundColor: 'transparent', paddingHorizontal: SPACING.xl, paddingTop: insets.top + SPACING.sm, paddingBottom: SPACING.md }}
+              >
+                {/* Top Row: Back (Left) + Titles (Center/Left) + Home (Right) */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable onPress={handlePrevStep} style={{ padding: SPACING.sm, marginLeft: -SPACING.sm, marginRight: SPACING.sm }}>
+                      <Feather name="arrow-left" size={24} color={COLORS.brandNavy} />
+                    </Pressable>
+                    
+                    <View style={{ alignItems: 'flex-start' }}>
+                      <Text style={{ fontSize: 24, fontWeight: '900', color: COLORS.brandNavy, letterSpacing: -0.5 }}>
+                        SymptaCare
+                      </Text>
+                      <Text style={{ fontSize: 14, color: COLORS.brandBlue, fontWeight: '700' }}>
+                        Symptom Check
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Pressable onPress={onSwitchToWelcome} style={{ padding: SPACING.sm, marginRight: -SPACING.sm }}>
+                    <Feather name="home" size={24} color={COLORS.brandNavy} />
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Centered Logo & Question (Floating in body) */}
+              <View style={{ alignItems: 'center', paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
+                <BlurView intensity={60} tint="light" style={{ padding: 6, borderRadius: 38, marginBottom: SPACING.lg, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.6)' }}>
+                  <Image 
+                    source={require('../../assets/icons/logo.jpg')}
+                    style={{ width: 90, height: 90, borderRadius: 32 }}
+                  />
+                </BlurView>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.brandNavy, textAlign: 'center', lineHeight: 32, marginBottom: SPACING.xs, paddingHorizontal: SPACING.xxl }}>
+                  Tell us a bit more.
+                </Text>
+                <Text style={{ fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', paddingHorizontal: SPACING.xxl }}>
+                  This helps us give you a more accurate result. All questions below are optional.
+                </Text>
+              </View>
+
+              <View style={{ padding: SPACING.xl, paddingBottom: SPACING.xxxl }}>
 
               {Object.values(assessments)
                 .filter(a => a.active)
@@ -376,52 +459,33 @@ export default function UserAssessmentScreen({ onSwitchToWelcome }: UserAssessme
                     onChange={handleContextChange}
                   />
                 ))}
+              </View>
             </ScrollView>
 
-            <PrimaryButton 
-              label="Analyze Symptoms"
-              onPress={handleNextStep}
-              style={{ marginHorizontal: SPACING.xl, marginBottom: SPACING.xl }}
-            />
+            <View style={{ paddingHorizontal: SPACING.xl, paddingVertical: SPACING.lg, backgroundColor: 'transparent' }}>
+              <PrimaryButton 
+                label="Analyze Symptoms"
+                onPress={handleNextStep}
+              />
+            </View>
+            </>
           </View>
         )}
 
-        {activeStep === 'RESULTS' && (
-          <ScrollView
-            style={styles.resultsScroll}
-            contentContainerStyle={styles.resultsContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* 1. Triage Summary */}
-            {selectedCount > 0 && <SeverityGauge memory={memory} />}
-            <TriageCard result={triageResult} />
-            {triageResult && (
-              <NextStepCard
-                riskCategory={triageResult.riskCategory}
-                triageAdvice={triageResult.triageAdvice}
-              />
-            )}
-            
-            {/* 2. Patient-friendly Symptoms + Context Summary */}
-            <PatientSymptomSummary assessments={assessments} />
-            
-            {/* 3. Patient-friendly Trace */}
-            <AuditTrailView auditTrail={auditTrail} showTechnicalToggle={false} />
-            
-            {/* 4. Safety Disclaimer */}
-            <Disclaimer />
-
-            {/* 5. Start New Assessment */}
-            <PrimaryButton 
-              label="Start New Assessment"
-              onPress={handleResetAssessment}
-              iconName="rotate-ccw"
-              style={{ marginTop: SPACING.xl, marginBottom: SPACING.xxxl }}
-            />
-          </ScrollView>
+        {activeStep === 'RESULTS' && triageResult && (
+          <AssessmentReport 
+            triageResult={triageResult}
+            assessments={assessments}
+            auditTrail={auditTrail}
+            rules={rules}
+            onStartNew={handleResetAssessment}
+            onShowHistory={onShowHistory}
+            onClose={onSwitchToWelcome}
+          />
         )}
       </View>
-    </SafeAreaView>
+    </View>
+    </LinearGradient>
   );
 }
 

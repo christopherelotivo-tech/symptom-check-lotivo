@@ -53,6 +53,14 @@ export default function NextStepCard({ riskCategory, triageAdvice }: NextStepCar
         <Text style={[styles.label, { color: config.iconColor }]}>{config.label}</Text>
       </View>
       <Text style={[styles.advice, { color: config.iconColor }]}>{triageAdvice}</Text>
+      
+      {riskCategory === 'Red' && (
+        <View style={{ marginTop: SPACING.lg, padding: SPACING.md, backgroundColor: '#FEF2F2', borderRadius: RADIUS.md, borderWidth: 1, borderColor: '#FCA5A5' }}>
+          <Text style={{ fontSize: TYPOGRAPHY.size.base, fontWeight: '700', color: '#DC2626', textAlign: 'center' }}>
+            Please call 911 or seek an ambulance immediately for emergency medical assistance.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

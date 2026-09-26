@@ -37,7 +37,7 @@ function AnimatedBucket({ opt, isSelected, onPress }: { opt: BucketOption; isSel
           {opt.label}
         </Text>
         {isSelected && (
-          <Feather name="check-circle" size={18} color={COLORS.brandGreen} />
+          <Feather name="check-circle" size={18} color="#FFFFFF" />
         )}
       </Pressable>
     </Animated.View>
@@ -82,25 +82,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
-    backgroundColor: COLORS.bgSurface,
+    backgroundColor: '#FFFFFF', // Pure white unselected
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: 'rgba(26, 58, 108, 0.05)',
     borderRadius: RADIUS.pill,
     minHeight: 52, // Mobile touch target size
   },
   bucketSelected: {
-    backgroundColor: '#F0FDF4', // Very light mint
-    borderColor: 'rgba(16, 185, 129, 0.4)', // Soft green outline
+    backgroundColor: '#059669', // Dark Emerald selected
+    borderColor: 'transparent', 
   },
   bucketText: {
     fontSize: TYPOGRAPHY.size.base,
-    color: COLORS.textSecondary,
+    color: COLORS.brandNavy,
     fontWeight: TYPOGRAPHY.weight.medium,
     flex: 1,
     paddingRight: SPACING.md,
   },
   bucketTextSelected: {
-    color: COLORS.brandNavy,
+    color: '#FFFFFF',
     fontWeight: TYPOGRAPHY.weight.bold,
   },
 });

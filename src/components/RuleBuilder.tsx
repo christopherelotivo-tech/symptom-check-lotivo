@@ -72,17 +72,17 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
   const [isLoading, setIsLoading] = useState(true);
 
   // Form State
-  const [ruleId, setRuleId] = useState('');
+  const [description, setDescription] = useState('');
+  const [riskCategory, setRiskCategory] = useState<'Green' | 'Amber' | 'Red'>('Green');
+  
+  // Categorized Advice
+  const [selfCareAdvice, setSelfCareAdvice] = useState('');
+  const [medicationAdvice, setMedicationAdvice] = useState('');
+  const [escalationTrigger, setEscalationTrigger] = useState('');
+
   const [antecedents, setAntecedents] = useState<RuleCondition[]>([
     { fact: '', operator: 'EQUALS', value: true },
   ]);
-  const [consequentFact, setConsequentFact] = useState('triage_green');
-  const [consequentValue, setConsequentValue] = useState(true);
-
-  const [priority, setPriority] = useState('10');
-  const [riskCategory, setRiskCategory] = useState<'Green' | 'Amber' | 'Red'>('Green');
-  const [triageAdvice, setTriageAdvice] = useState('');
-  const [description, setDescription] = useState('');
 
   useEffect(() => {
     loadRules();
@@ -117,38 +117,52 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
   };
 
   const resetForm = () => {
-    setRuleId('');
-    setAntecedents([{ fact: '', operator: 'EQUALS', value: true }]);
-    setConsequentFact('triage_green');
-    setConsequentValue(true);
-    setPriority('10');
-    setRiskCategory('Green');
-    setTriageAdvice('');
     setDescription('');
+    setRiskCategory('Green');
+    setSelfCareAdvice('');
+    setMedicationAdvice('');
+    setEscalationTrigger('');
+    setAntecedents([{ fact: '', operator: 'EQUALS', value: true }]);
   };
 
   const handleSaveRule = async () => {
-    // Basic structural validation
-    if (!ruleId.trim()) return Alert.alert('Error', 'Rule ID is required.');
-    if (antecedents.some(a => !a.fact.trim())) return Alert.alert('Error', 'All When... conditions must have an observation name.');
-    if (!consequentFact.trim()) return Alert.alert('Error', 'Clinical Conclusion is required.');
-    if (!triageAdvice.trim()) return Alert.alert('Error', 'Triage Advice is required.');
-    if (isNaN(Number(priority))) return Alert.alert('Error', 'Priority must be a valid number.');
+    if (!description.trim()) {
+      return Alert.alert('Validation Error', 'Please provide a Rule Title.');
+    }
+    
+    // Validate conditions
+    for (const cond of antecedents) {
+      if (!cond.fact) {
+        return Alert.alert('Validation Error', 'All conditions must have a selected symptom.');
+      }
+    }
+
+    // Auto-generate ID and Priority
+    const autoId = 'CP_' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    const autoPriority = riskCategory === 'Red' ? 100 : riskCategory === 'Amber' ? 60 : 20;
+    const autoConsequent = description.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    // Compile triageAdvice fallback
+    const triageAdviceParts = [];
+    if (selfCareAdvice) triageAdviceParts.push(`Self-Care: ${selfCareAdvice}`);
+    if (medicationAdvice) triageAdviceParts.push(`Medication: ${medicationAdvice}`);
+    if (escalationTrigger) triageAdviceParts.push(`Escalation Trigger: ${escalationTrigger}`);
+    const fallbackAdvice = triageAdviceParts.length > 0 ? triageAdviceParts.join('\n\n') : 'No specific advice provided.';
 
     const candidateRule: Rule = {
-      id: ruleId.trim().toUpperCase().replace(/\s+/g, '_'),
+      id: autoId,
       antecedents: antecedents.map(a => ({
         ...a,
         fact: a.fact.trim().toLowerCase().replace(/\s+/g, '_'),
       })),
-      consequent: {
-        fact: consequentFact.trim().toLowerCase().replace(/\s+/g, '_'),
-        value: consequentValue,
-      },
+      consequent: { fact: autoConsequent, value: true },
       metadata: {
-        priority: parseInt(priority, 10),
+        priority: autoPriority,
         riskCategory,
-        triageAdvice: triageAdvice.trim(),
+        triageAdvice: fallbackAdvice,
+        selfCareAdvice: selfCareAdvice.trim(),
+        medicationAdvice: medicationAdvice.trim(),
+        escalationTrigger: escalationTrigger.trim(),
         description: description.trim(),
       },
     };
@@ -162,12 +176,12 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
 
     try {
       await addCustomRule(candidateRule);
-      Alert.alert('Success', 'Rule saved successfully!');
+      Alert.alert('Success', 'Protocol saved successfully!');
       resetForm();
       loadRules(); // Refresh existing rules for future validation
       if (onRuleSaved) onRuleSaved();
     } catch (error) {
-      Alert.alert('Database Error', 'Failed to save the rule to the database.');
+      Alert.alert('Database Error', 'Failed to save the protocol.');
       console.error(error);
     }
   };
@@ -181,54 +195,71 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.headerTitle}>Rule Builder</Text>
-        <Text style={styles.headerSub}>
-          Create new clinical inference rules.
-        </Text>
+        <Text style={styles.headerTitle}>Protocol Builder</Text>
+        <Text style={styles.headerSub}>Create new clinical triage protocols.</Text>
 
-        {/* 1. Clinical Definition */}
+        {/* 1. Protocol Definition */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Clinical Definition</Text>
-          <Text style={styles.label}>Internal Description</Text>
+          <Text style={styles.sectionTitle}>Protocol Definition</Text>
+          <Text style={styles.label}>Protocol Name (Short Title)</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="e.g., Severe Respiratory Assessment"
-            multiline
+            style={styles.input}
+            placeholder="e.g., Tension Headache"
             value={description}
             onChangeText={setDescription}
           />
 
-          <Text style={styles.label}>Risk Category</Text>
+          <Text style={styles.label}>Triage Urgency Tier</Text>
           <SegmentedControl
             options={[
-              { label: '🟢 Green', value: 'Green' },
-              { label: '🟡 Amber', value: 'Amber' },
-              { label: '🔴 Red', value: 'Red' },
+              { label: '🟢 Low Concern', value: 'Green' },
+              { label: '🟡 Doctor Consult', value: 'Amber' },
+              { label: '🔴 Emergency', value: 'Red' },
             ]}
             value={riskCategory}
             onChange={setRiskCategory}
           />
+        </View>
 
-          <Text style={[styles.label, { marginTop: SPACING.md }]}>Triage Advice</Text>
+        {/* 2. Clinical Advice Categories */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Clinical Advice</Text>
+          
+          <Text style={styles.label}>Self-Care Instructions</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Advice to show the user..."
+            placeholder="e.g., Rest in a quiet environment, maintain hydration..."
             multiline
-            value={triageAdvice}
-            onChangeText={setTriageAdvice}
+            value={selfCareAdvice}
+            onChangeText={setSelfCareAdvice}
+          />
+
+          <Text style={styles.label}>Medication Guidelines</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="e.g., Over-the-counter pain relief (acetaminophen)..."
+            multiline
+            value={medicationAdvice}
+            onChangeText={setMedicationAdvice}
+          />
+
+          <Text style={styles.label}>Escalation Triggers</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="e.g., Consult physician if symptoms persist beyond 48 hours..."
+            multiline
+            value={escalationTrigger}
+            onChangeText={setEscalationTrigger}
           />
         </View>
 
-        {/* 2. Clinical Triggers */}
+        {/* 3. Clinical Triggers (Conditions) */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Clinical Triggers</Text>
+          <Text style={styles.sectionTitle}>Required Symptom Conditions</Text>
           
-          <Text style={styles.label}>When...</Text>
+          <Text style={styles.label}>Trigger this protocol when...</Text>
           {antecedents.map((cond, index) => (
             <View key={index} style={styles.conditionCard}>
               <View style={styles.conditionHeader}>
@@ -250,8 +281,8 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
                   <Text style={styles.label}>Status</Text>
                   <SegmentedControl
                     options={[
-                      { label: 'Is present', value: 'present' },
-                      { label: 'Is absent', value: 'absent' },
+                      { label: 'Is Present', value: 'present' },
+                      { label: 'Is Absent', value: 'absent' },
                     ]}
                     value={cond.operator === 'EQUALS' && cond.value === false ? 'absent' : 'present'}
                     onChange={val => {
@@ -269,52 +300,9 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
           <Pressable style={styles.addButton} onPress={handleAddCondition}>
             <Text style={styles.addButtonText}>+ Add Condition</Text>
           </Pressable>
-
-          <Text style={[styles.label, { marginTop: SPACING.xl }]}>Clinical Conclusion</Text>
-          <View style={styles.thenCard}>
-            <Text style={styles.hintText}>
-              What should the engine conclude when ALL conditions above are met?
-            </Text>
-            <SegmentedControl
-              options={[
-                { label: '🟢 Low Concern', value: 'triage_green' },
-                { label: '🟡 See a Doctor', value: 'triage_amber' },
-                { label: '🔴 Emergency', value: 'triage_red' },
-              ]}
-              value={consequentFact || 'triage_green'}
-              onChange={(val) => setConsequentFact(String(val))}
-            />
-          </View>
         </View>
 
-        {/* 3. System Configuration */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>System Configuration (Advanced)</Text>
-          
-          <Text style={styles.label}>System Rule ID</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., SEVERE_FEVER_RISK"
-            value={ruleId}
-            onChangeText={setRuleId}
-            autoCapitalize="characters"
-          />
-          
-          <Text style={styles.label}>Priority Score</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="10"
-            keyboardType="numeric"
-            value={priority}
-            onChangeText={setPriority}
-          />
-        </View>
-
-        <PrimaryButton
-          label="Save Guideline"
-          onPress={handleSaveRule}
-          iconName="save"
-        />
+        <PrimaryButton label="Save Protocol" onPress={handleSaveRule} iconName="save" />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -327,7 +315,7 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.bgPrimary,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,
@@ -335,8 +323,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
-    padding: SPACING.xl,
-    paddingBottom: 40,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.sm,
+    paddingBottom: 80,
   },
   headerTitle: {
     fontSize: TYPOGRAPHY.size.xxl,

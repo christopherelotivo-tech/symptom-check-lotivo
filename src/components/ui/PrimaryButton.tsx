@@ -9,10 +9,11 @@ interface PrimaryButtonProps {
   iconName?: keyof typeof Feather.glyphMap;
   disabled?: boolean;
   style?: ViewStyle | ViewStyle[];
+  buttonStyle?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle | TextStyle[];
 }
 
-export default function PrimaryButton({ label, onPress, iconName, disabled = false, style, textStyle }: PrimaryButtonProps) {
+export default function PrimaryButton({ label, onPress, iconName, disabled = false, style, buttonStyle, textStyle }: PrimaryButtonProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -38,6 +39,7 @@ export default function PrimaryButton({ label, onPress, iconName, disabled = fal
       <Pressable
         style={({ pressed }) => [
           styles.button,
+          buttonStyle,
           disabled && styles.buttonDisabled,
         ]}
         onPress={disabled ? undefined : onPress}
@@ -46,15 +48,11 @@ export default function PrimaryButton({ label, onPress, iconName, disabled = fal
         accessibilityRole="button"
         accessibilityState={{ disabled }}
       >
-        <View style={styles.leftContent}>
+        <View style={styles.contentWrapper}>
           {iconName && (
-            <Feather name={iconName} size={18} color={COLORS.textOnGreen} style={styles.icon} />
+            <Feather name={iconName} size={18} color="#ffffff" style={styles.icon} />
           )}
           <Text style={[styles.label, disabled && styles.labelDisabled, textStyle]}>{label}</Text>
-        </View>
-        
-        <View style={styles.arrowBox}>
-          <Feather name="chevron-right" size={16} color={COLORS.brandGreen} />
         </View>
       </Pressable>
     </Animated.View>
@@ -65,24 +63,24 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#78d596', // Slightly softer green matching inspo
+    justifyContent: 'center',
+    backgroundColor: '#1b2438',
     borderRadius: RADIUS.pill,
     paddingVertical: 8,
-    paddingLeft: SPACING.xl,
-    paddingRight: 8,
+    paddingHorizontal: SPACING.xl,
     minHeight: 60,
     ...SHADOW.md,
-    shadowColor: COLORS.brandGreen,
+    shadowColor: '#1b2438',
     shadowOpacity: 0.3,
   },
   buttonDisabled: {
     backgroundColor: COLORS.borderLight,
     shadowOpacity: 0,
   },
-  leftContent: {
+  contentWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   icon: {
     marginRight: SPACING.sm,
@@ -90,19 +88,10 @@ const styles = StyleSheet.create({
   label: {
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.textOnGreen,
+    color: '#ffffff',
     fontFamily: TYPOGRAPHY.fontFamily.primary,
   },
   labelDisabled: {
     color: COLORS.textMuted,
-  },
-  arrowBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.bgSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SHADOW.sm,
-  },
+  }
 });

@@ -5,14 +5,18 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-masked-view/masked-view": "0.3.2",
     "expo": "~57.0.22",
+    "expo-blur": "~57.0.3",
     "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
+    "expo-linear-gradient": "~57.0.2",
     "expo-sharing": "~57.0.19",
     "expo-sqlite": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

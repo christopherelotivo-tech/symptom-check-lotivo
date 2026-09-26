@@ -84,10 +84,9 @@ async function seedSystemRules(database: SQLite.SQLiteDatabase): Promise<void> {
     'SELECT COUNT(*) AS count FROM system_rules'
   );
 
-  if (row && row.count > 0) {
-    // Already seeded — nothing to do.
-    return;
-  }
+  // FORCE RESEED FOR THIS UPDATE
+  console.log('[DatabaseService] Clearing old system_rules to re-seed short titles...');
+  await database.execAsync('DELETE FROM system_rules;');
 
   console.log('[DatabaseService] Seeding system_rules from seedRules.json…');
 

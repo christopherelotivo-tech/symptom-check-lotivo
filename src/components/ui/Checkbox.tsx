@@ -36,7 +36,7 @@ export default function Checkbox({ label, checked, onChange, iconName }: Checkbo
             <Feather
               name={iconName}
               size={18}
-              color={checked ? COLORS.brandGreen : COLORS.textMuted}
+              color={checked ? '#FFFFFF' : COLORS.textMuted}
               style={styles.icon}
             />
           )}
@@ -46,7 +46,7 @@ export default function Checkbox({ label, checked, onChange, iconName }: Checkbo
           <Feather 
             name={checked ? "check" : "help-circle"} 
             size={16} 
-            color={checked ? COLORS.bgSurface : COLORS.textMuted} 
+            color={checked ? '#FFFFFF' : COLORS.textMuted} 
           />
         </View>
       </Pressable>
@@ -61,17 +61,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     paddingHorizontal: SPACING.base,
-    backgroundColor: COLORS.bgSurface,
+    backgroundColor: '#FFFFFF', // Pure white so it doesn't camouflage against the mint card
     borderRadius: RADIUS.pill,
     marginBottom: SPACING.sm,
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: 'rgba(26, 58, 108, 0.05)',
     minHeight: 56,
     ...SHADOW.sm,
   },
   containerChecked: {
-    borderColor: 'rgba(16, 185, 129, 0.4)', // Soft green outline
-    backgroundColor: '#F0FDF4', // Very light mint background
+    borderColor: 'transparent',
+    backgroundColor: '#059669', // Dark Emerald when checked
   },
   leftContent: {
     flexDirection: 'row',
@@ -84,21 +84,21 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: TYPOGRAPHY.size.base,
-    color: COLORS.textPrimary,
+    color: COLORS.brandNavy,
     fontWeight: TYPOGRAPHY.weight.semibold,
   },
   labelChecked: {
-    color: COLORS.brandNavy,
+    color: '#FFFFFF',
   },
   iconBox: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: COLORS.bgSurface2,
+    backgroundColor: COLORS.bgPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconBoxChecked: {
-    backgroundColor: COLORS.brandGreen,
-  },
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  }
 });

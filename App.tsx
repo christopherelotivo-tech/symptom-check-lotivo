@@ -4,12 +4,19 @@ import {
   StyleSheet,
   StatusBar,
   Text,
-  SafeAreaView,
   FlatList,
   Modal,
   Pressable,
   Animated,
+  UIManager,
+  Platform,
+  LayoutAnimation,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import UserAssessmentScreen from './src/screens/UserAssessmentScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
@@ -118,13 +125,18 @@ export function HistoryModal({ visible, onClose }: { visible: boolean; onClose: 
 function PatientZone({ onSwitchToAdmin }: { onSwitchToAdmin: () => void }) {
   const [isAssessing, setIsAssessing] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   return (
     <View style={styles.zoneContainer}>
       <AboutModal visible={showAbout} onClose={() => setShowAbout(false)} />
+      <HistoryModal visible={showHistory} onClose={() => setShowHistory(false)} />
 
       {isAssessing ? (
-        <UserAssessmentScreen onSwitchToWelcome={() => setIsAssessing(false)} />
+        <UserAssessmentScreen 
+          onSwitchToWelcome={() => setIsAssessing(false)} 
+          onShowHistory={() => setShowHistory(true)}
+        />
       ) : (
         <WelcomeScreen
           onSelectMode={(mode) => {
@@ -152,14 +164,16 @@ export default function App() {
   if (!isReady) return null;
 
   return (
+    <SafeAreaProvider>
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.brandNavy} />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       {zone === 'PATIENT' ? (
         <PatientZone onSwitchToAdmin={() => setZone('ADMIN')} />
       ) : (
         <AdminScreen onSwitchToWelcome={() => setZone('PATIENT')} />
       )}
     </View>
+    </SafeAreaProvider>
   );
 }
 

@@ -32,7 +32,10 @@ export interface RuleConsequent {
 export interface RuleMetadata {
   priority: number;
   riskCategory: 'Green' | 'Amber' | 'Red';
-  triageAdvice: string;
+  triageAdvice: string; // General/Fallback advice
+  selfCareAdvice?: string;
+  medicationAdvice?: string;
+  escalationTrigger?: string;
   description: string;
 }
 
@@ -114,6 +117,9 @@ export interface TriageResult {
   riskCategory: 'Green' | 'Amber' | 'Red';
   /** Primary clinical advice to display to the user. */
   triageAdvice: string;
+  selfCareAdvice?: string;
+  medicationAdvice?: string;
+  escalationTrigger?: string;
   /** Human-readable description of the triggered condition. */
   description: string;
   /** Ordered list of rule IDs that fired, for audit display. */
