@@ -81,6 +81,7 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<AdminTab>('PROTOCOLS');
   const [isBuilding, setIsBuilding] = useState(false);
+  const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [allRules, setAllRules] = useState<RuleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeRiskTab, setActiveRiskTab] = useState<'All' | 'Red' | 'Amber' | 'Green'>('All');
@@ -145,18 +146,30 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
     ]);
   };
 
+  const handleEditRule = (rule: Rule, isSystem: boolean) => {
+    if (isSystem) {
+      Alert.alert('Restricted', 'System rules cannot be edited for clinical safety reasons. You may disable them and create a custom replacement instead.');
+      return;
+    }
+    setEditingRule(rule);
+    setIsBuilding(true);
+  };
+
   // ── Render Helpers ────────────────────────────────────────────────────────
   const renderListTab = () => {
     if (isBuilding) {
       return (
         <View style={{flex: 1}}>
           <View style={{flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.xl, paddingTop: SPACING.xs, paddingBottom: SPACING.sm}}>
-            <Pressable onPress={() => setIsBuilding(false)} style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Pressable onPress={() => { setIsBuilding(false); setEditingRule(null); }} style={{flexDirection: 'row', alignItems: 'center'}}>
                <Feather name="arrow-left" size={24} color={COLORS.brandNavy} />
-               <Text style={{marginLeft: SPACING.sm, fontSize: 16, fontWeight: '600', color: COLORS.brandNavy}}>Back to Pathways</Text>
+               <Text style={{marginLeft: SPACING.sm, fontSize: 16, fontWeight: '600', color: COLORS.brandNavy}}>Back to Protocols</Text>
             </Pressable>
           </View>
-          <RuleBuilder onRuleSaved={() => {
+          <RuleBuilder 
+            initialRule={editingRule}
+            onCancelEdit={() => { setIsBuilding(false); setEditingRule(null); }}
+            onRuleSaved={() => {
             fetchRules();
             setIsBuilding(false);
           }} />
@@ -396,9 +409,14 @@ export default function AdminScreen({ onSwitchToWelcome }: AdminScreenProps) {
                 </Text>
               </View>
               {!isSystem ? (
-                <Pressable onPress={() => handleDeleteRule(rule.id, isSystem)} style={styles.deleteBtn}>
-                  <Text style={styles.deleteText}>Delete</Text>
-                </Pressable>
+                <View style={{ flexDirection: 'row', gap: SPACING.md }}>
+                  <Pressable onPress={() => handleEditRule(rule, isSystem)} style={styles.editBtn}>
+                    <Text style={styles.editText}>Edit</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleDeleteRule(rule.id, isSystem)} style={styles.deleteBtn}>
+                    <Text style={styles.deleteText}>Delete</Text>
+                  </Pressable>
+                </View>
               ) : (
                 <Text style={styles.systemNote}>System Guideline (Read-Only)</Text>
               )}
@@ -718,6 +736,17 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: TYPOGRAPHY.weight.bold,
     color: COLORS.error,
+  },
+  editBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.sm,
+  },
+  editText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: '#3B82F6',
   },
   systemNote: {
     color: COLORS.textMuted,

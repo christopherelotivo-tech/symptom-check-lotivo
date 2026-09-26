@@ -67,22 +67,46 @@ function SegmentedControl<T extends string | boolean | number>({
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void }) {
+interface RuleBuilderProps {
+  onRuleSaved?: () => void;
+  initialRule?: Rule | null;
+  onCancelEdit?: () => void;
+}
+
+export default function RuleBuilder({ onRuleSaved, initialRule, onCancelEdit }: RuleBuilderProps) {
   const [existingRules, setExistingRules] = useState<Rule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Form State
-  const [description, setDescription] = useState('');
-  const [riskCategory, setRiskCategory] = useState<'Green' | 'Amber' | 'Red'>('Green');
+  const [description, setDescription] = useState(initialRule?.metadata.description || '');
+  const [riskCategory, setRiskCategory] = useState<'Green' | 'Amber' | 'Red'>(
+    initialRule?.metadata.riskCategory as any || 'Green'
+  );
   
   // Categorized Advice
-  const [selfCareAdvice, setSelfCareAdvice] = useState('');
-  const [medicationAdvice, setMedicationAdvice] = useState('');
-  const [escalationTrigger, setEscalationTrigger] = useState('');
+  const [selfCareAdvice, setSelfCareAdvice] = useState(initialRule?.metadata.selfCareAdvice || '');
+  const [medicationAdvice, setMedicationAdvice] = useState(initialRule?.metadata.medicationAdvice || '');
+  const [escalationTrigger, setEscalationTrigger] = useState(initialRule?.metadata.escalationTrigger || '');
 
-  const [antecedents, setAntecedents] = useState<RuleCondition[]>([
-    { fact: '', operator: 'EQUALS', value: true },
-  ]);
+  const [antecedents, setAntecedents] = useState<RuleCondition[]>(
+    initialRule?.antecedents && initialRule.antecedents.length > 0
+      ? initialRule.antecedents
+      : [{ fact: '', operator: 'EQUALS', value: true }]
+  );
+
+  // Sync when initialRule changes (if passed dynamically)
+  useEffect(() => {
+    if (initialRule) {
+      setDescription(initialRule.metadata.description || '');
+      setRiskCategory(initialRule.metadata.riskCategory as any || 'Green');
+      setSelfCareAdvice(initialRule.metadata.selfCareAdvice || '');
+      setMedicationAdvice(initialRule.metadata.medicationAdvice || '');
+      setEscalationTrigger(initialRule.metadata.escalationTrigger || '');
+      setAntecedents(initialRule.antecedents.length > 0 ? initialRule.antecedents : [{ fact: '', operator: 'EQUALS', value: true }]);
+    } else {
+      resetForm();
+    }
+  }, [initialRule]);
 
   useEffect(() => {
     loadRules();
@@ -150,12 +174,12 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
     const fallbackAdvice = triageAdviceParts.length > 0 ? triageAdviceParts.join('\n\n') : 'No specific advice provided.';
 
     const candidateRule: Rule = {
-      id: autoId,
+      id: initialRule ? initialRule.id : autoId,
       antecedents: antecedents.map(a => ({
         ...a,
         fact: a.fact.trim().toLowerCase().replace(/\s+/g, '_'),
       })),
-      consequent: { fact: autoConsequent, value: true },
+      consequent: initialRule ? initialRule.consequent : { fact: autoConsequent, value: true },
       metadata: {
         priority: autoPriority,
         riskCategory,
@@ -167,16 +191,24 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
       },
     };
 
-    // Run custom rule validator (duplicates & circular dependencies)
-    const validation = RuleValidator.validate(candidateRule, existingRules);
+    // Filter out the rule we are editing from the validation check (to avoid duplicate ID errors on itself)
+    const contextRules = initialRule ? existingRules.filter(r => r.id !== initialRule.id) : existingRules;
+    const validation = RuleValidator.validate(candidateRule, contextRules);
     
     if (!validation.isValid) {
       return Alert.alert('Validation Error', validation.errors.join('\n\n'));
     }
 
     try {
-      await addCustomRule(candidateRule);
-      Alert.alert('Success', 'Protocol saved successfully!');
+      if (initialRule) {
+        const { updateCustomRule } = await import('../database/DatabaseService');
+        await updateCustomRule(candidateRule);
+        Alert.alert('Success', 'Protocol updated successfully!');
+      } else {
+        await addCustomRule(candidateRule);
+        Alert.alert('Success', 'Protocol saved successfully!');
+      }
+      
       resetForm();
       loadRules(); // Refresh existing rules for future validation
       if (onRuleSaved) onRuleSaved();
@@ -302,7 +334,23 @@ export default function RuleBuilder({ onRuleSaved }: { onRuleSaved?: () => void 
           </Pressable>
         </View>
 
-        <PrimaryButton label="Save Protocol" onPress={handleSaveRule} iconName="save" />
+        {initialRule ? (
+          <View style={{ flexDirection: 'row', gap: SPACING.md }}>
+            <View style={{ flex: 1 }}>
+              <PrimaryButton 
+                label="Cancel" 
+                onPress={onCancelEdit || (() => {})} 
+                buttonStyle={{ backgroundColor: COLORS.bgSurface, borderWidth: 1, borderColor: COLORS.borderLight }}
+                textStyle={{ color: COLORS.textPrimary }}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <PrimaryButton label="Update Protocol" onPress={handleSaveRule} iconName="save" />
+            </View>
+          </View>
+        ) : (
+          <PrimaryButton label="Save Protocol" onPress={handleSaveRule} iconName="save" />
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -30,14 +30,8 @@ import { initDatabase, loadUnifiedRules } from '../database/DatabaseService';
 // ─────────────────────────────────────────────────────────────────────────────
 
 import SymptomForm, { SYMPTOM_CATEGORIES } from '../components/SymptomForm';
-import TriageCard     from '../components/TriageCard';
-import AuditTrailView from '../components/AuditTrailView';
-import SeverityGauge  from '../components/SeverityGauge';
 import BottomNav      from '../components/BottomNav';
-import NextStepCard   from '../components/ui/NextStepCard';
-import Disclaimer     from '../components/ui/Disclaimer';
 import SymptomContextCard from '../components/SymptomContextCard';
-import PatientSymptomSummary from '../components/PatientSymptomSummary';
 import PrimaryButton from '../components/ui/PrimaryButton';
 import LoadingState from '../components/ui/LoadingState';
 import AssessmentReport from '../components/AssessmentReport';
