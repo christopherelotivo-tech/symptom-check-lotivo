@@ -51,11 +51,18 @@ export async function getAssessmentHistory(): Promise<PatientAssessmentRecord[]>
     } catch {
       // It's the old legacy plain string
     }
+    let parsedSymptoms: string[] = [];
+    try {
+      parsedSymptoms = JSON.parse(row.symptoms);
+      if (!Array.isArray(parsedSymptoms)) parsedSymptoms = [];
+    } catch {
+      // Fallback to empty array if corrupted
+    }
 
     return {
       id: row.id,
       date: row.date,
-      symptoms: JSON.parse(row.symptoms),
+      symptoms: parsedSymptoms,
       triage: row.triage,
       advice: adviceStr,
       triageResult: triageResultObj,
