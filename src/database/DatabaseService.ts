@@ -90,12 +90,17 @@ async function seedSystemRules(database: SQLite.SQLiteDatabase): Promise<void> {
 
   console.log('[DatabaseService] Seeding system_rules from seedRules.json…');
 
-  for (const rule of seedRules as Rule[]) {
-    await database.runAsync(
-      'INSERT INTO system_rules (id, rule_json) VALUES (?, ?)',
-      rule.id,
-      JSON.stringify(rule)
-    );
+  try {
+    for (const rule of seedRules as Rule[]) {
+      await database.runAsync(
+        'INSERT INTO system_rules (id, rule_json) VALUES (?, ?)',
+        rule.id,
+        JSON.stringify(rule)
+      );
+    }
+  } catch (err) {
+    console.error('[DatabaseService] Failed to seed system rules:', err);
+    throw err;
   }
 
   console.log(`[DatabaseService] Seeded ${seedRules.length} system rule(s).`);
@@ -120,8 +125,16 @@ export async function getAllRules(): Promise<Rule[]> {
     'SELECT rule_json FROM custom_rules ORDER BY created_at ASC'
   );
 
-  const parseRows = (rows: { rule_json: string }[]): Rule[] =>
-    rows.map(row => JSON.parse(row.rule_json) as Rule);
+  const parseRows = (rows: { rule_json: string }[]): Rule[] => {
+    return rows.reduce((acc, row) => {
+      try {
+        acc.push(JSON.parse(row.rule_json) as Rule);
+      } catch (e) {
+        console.error('[DatabaseService] Failed to parse rule:', e);
+      }
+      return acc;
+    }, [] as Rule[]);
+  };
 
   return [...parseRows(systemRows), ...parseRows(customRows)];
 }
@@ -134,7 +147,14 @@ export async function getSystemRules(): Promise<Rule[]> {
   const rows = await database.getAllAsync<{ rule_json: string }>(
     'SELECT rule_json FROM system_rules'
   );
-  return rows.map(row => JSON.parse(row.rule_json) as Rule);
+  return rows.reduce((acc, row) => {
+    try {
+      acc.push(JSON.parse(row.rule_json) as Rule);
+    } catch (e) {
+      console.error('[DatabaseService] Failed to parse system rule:', e);
+    }
+    return acc;
+  }, [] as Rule[]);
 }
 
 /**
@@ -152,17 +172,31 @@ export async function getAllRulesAdmin(): Promise<{ rule: Rule; isEnabled: boole
     'SELECT rule_json, is_enabled FROM custom_rules ORDER BY created_at ASC'
   );
 
-  const sysRules = systemRows.map(row => ({
-    rule: JSON.parse(row.rule_json) as Rule,
-    isEnabled: row.is_active === 1,
-    isSystem: true,
-  }));
+  const sysRules = systemRows.reduce((acc, row) => {
+    try {
+      acc.push({
+        rule: JSON.parse(row.rule_json) as Rule,
+        isEnabled: row.is_active === 1,
+        isSystem: true,
+      });
+    } catch (e) {
+      console.error('[DatabaseService] Failed to parse sys rule:', e);
+    }
+    return acc;
+  }, [] as any[]);
 
-  const custRules = customRows.map(row => ({
-    rule: JSON.parse(row.rule_json) as Rule,
-    isEnabled: row.is_enabled === 1,
-    isSystem: false,
-  }));
+  const custRules = customRows.reduce((acc, row) => {
+    try {
+      acc.push({
+        rule: JSON.parse(row.rule_json) as Rule,
+        isEnabled: row.is_enabled === 1,
+        isSystem: false,
+      });
+    } catch (e) {
+      console.error('[DatabaseService] Failed to parse cust rule:', e);
+    }
+    return acc;
+  }, [] as any[]);
 
   return [...sysRules, ...custRules];
 }
@@ -193,8 +227,16 @@ export async function loadUnifiedRules(): Promise<Rule[]> {
     'SELECT rule_json FROM custom_rules WHERE is_enabled = 1 ORDER BY created_at ASC'
   );
 
-  const parseRows = (rows: { rule_json: string }[]): Rule[] =>
-    rows.map(row => JSON.parse(row.rule_json) as Rule);
+  const parseRows = (rows: { rule_json: string }[]): Rule[] => {
+    return rows.reduce((acc, row) => {
+      try {
+        acc.push(JSON.parse(row.rule_json) as Rule);
+      } catch (e) {
+        console.error('[DatabaseService] Failed to parse rule in loadUnifiedRules:', e);
+      }
+      return acc;
+    }, [] as Rule[]);
+  };
 
   // Merge into a single in-memory array.
   const unified: Rule[] = [
