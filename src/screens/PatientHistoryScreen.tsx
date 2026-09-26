@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, Share } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
@@ -56,7 +56,6 @@ export default function PatientHistoryScreen({ onBack }: PatientHistoryScreenPro
   };
 
   const handlePrint = async (record: PatientAssessmentRecord) => {
-    const { Share } = await import('react-native');
     
     let message = `🏥 SymptaCare Assessment Result\n`;
     message += `Date: ${new Date(record.date).toLocaleString()}\n\n`;
