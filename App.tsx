@@ -76,10 +76,18 @@ import PatientHistoryScreen from './src/screens/PatientHistoryScreen';
 // ---------------------------------------------------------------------------
 // Patient Zone — no tabs, just welcome → assessment
 // ---------------------------------------------------------------------------
-function PatientZone({ onSwitchToAdmin }: { onSwitchToAdmin: () => void }) {
-  const [isAssessing, setIsAssessing] = useState(false);
+function PatientZone({ onSwitchToAdmin, startAssessingDirectly, clearDirect }: { onSwitchToAdmin: () => void, startAssessingDirectly: boolean, clearDirect: () => void }) {
+  const [isAssessing, setIsAssessing] = useState(startAssessingDirectly);
   const [showAbout, setShowAbout] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    if (startAssessingDirectly) {
+      setIsAssessing(true);
+      setShowHistory(false);
+      clearDirect();
+    }
+  }, [startAssessingDirectly]);
 
   return (
     <View style={styles.zoneContainer}>
@@ -112,6 +120,7 @@ function PatientZone({ onSwitchToAdmin }: { onSwitchToAdmin: () => void }) {
 export default function App() {
   const [zone, setZone] = useState<AppZone>('PATIENT');
   const [isReady, setIsReady] = useState(false);
+  const [directToAssess, setDirectToAssess] = useState(false);
 
   useEffect(() => {
     initDatabase().then(() => setIsReady(true));
@@ -124,9 +133,16 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       {zone === 'PATIENT' ? (
-        <PatientZone onSwitchToAdmin={() => setZone('ADMIN')} />
+        <PatientZone 
+          onSwitchToAdmin={() => setZone('ADMIN')} 
+          startAssessingDirectly={directToAssess}
+          clearDirect={() => setDirectToAssess(false)}
+        />
       ) : (
-        <AdminScreen onSwitchToWelcome={() => setZone('PATIENT')} />
+        <AdminScreen onSwitchToWelcome={() => {
+          setDirectToAssess(true);
+          setZone('PATIENT');
+        }} />
       )}
     </View>
     </SafeAreaProvider>
