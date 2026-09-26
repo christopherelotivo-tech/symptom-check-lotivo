@@ -1228,5 +1228,79 @@
       "medicationAdvice": "Over-the-counter medications can be used as directed for symptom relief.",
       "escalationTrigger": "Consult a doctor if symptoms persist for more than 48-72 hours."
     }
+  },
+  {
+    "id": "ctx-fever-prolonged",
+    "antecedents": [
+      {
+        "fact": "fever_duration_gt_1_week",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "Prolonged Undiagnosed Fever",
+      "value": true
+    },
+    "metadata": {
+      "description": "Fever (Duration > 1 Week)",
+      "riskCategory": "Amber",
+      "priority": 85,
+      "selfCareAdvice": "Monitor temperature regularly and stay well-hydrated. Keep a log of your symptoms.",
+      "medicationAdvice": "Fever reducers can manage symptoms, but you must seek medical attention to find the root cause.",
+      "escalationTrigger": "Go to the ER if you develop confusion, severe headache, or trouble breathing.",
+      "triageAdvice": "A fever lasting more than a week is abnormal and requires medical investigation."
+    }
+  },
+  {
+    "id": "ctx-headache-severe",
+    "antecedents": [
+      {
+        "fact": "headache_severity_severe",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "Severe Thunderclap Headache",
+      "value": true
+    },
+    "metadata": {
+      "description": "Headache (Severe)",
+      "riskCategory": "Red",
+      "priority": 95,
+      "selfCareAdvice": "Sit down and avoid any physical exertion. Have someone else monitor you.",
+      "medicationAdvice": "Do not take blood thinners or random pain medications until evaluated.",
+      "escalationTrigger": "A sudden, severe headache is a medical emergency. Call 911 immediately.",
+      "triageAdvice": "Immediate neurological evaluation is required."
+    }
+  },
+  {
+    "id": "ctx-chestpain-acute",
+    "antecedents": [
+      {
+        "fact": "chest_pain_severity_severe",
+        "operator": "EQUALS",
+        "value": true
+      },
+      {
+        "fact": "chest_pain_duration_lt_24h",
+        "operator": "EQUALS",
+        "value": true
+      }
+    ],
+    "consequent": {
+      "fact": "Acute Severe Chest Pain",
+      "value": true
+    },
+    "metadata": {
+      "description": "Acute Severe Chest Pain (< 24h)",
+      "riskCategory": "Red",
+      "priority": 100,
+      "selfCareAdvice": "Sit down, rest immediately, and loosen any tight clothing.",
+      "medicationAdvice": "Chew aspirin (325mg) if advised by a doctor or emergency operator.",
+      "escalationTrigger": "Call 911 immediately. This is a potential cardiac event.",
+      "triageAdvice": "Immediate cardiac evaluation is required."
+    }
   }
 ]

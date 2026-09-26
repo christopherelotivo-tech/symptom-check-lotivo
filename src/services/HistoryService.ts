@@ -6,7 +6,8 @@ export interface PatientAssessmentRecord {
   date: number;
   symptoms: string[];
   triage: string;
-  advice: string;
+  advice: string; // Legacy string
+  triageResult?: TriageResult; // New full object
   audit: string;
 }
 
@@ -28,7 +29,7 @@ export async function saveAssessmentHistory(
       date,
       JSON.stringify(symptoms),
       result.riskCategory,
-      result.triageAdvice,
+      JSON.stringify(result), // Store full object as JSON
       JSON.stringify(auditTrail)
     ]
   );
@@ -38,14 +39,29 @@ export async function getAssessmentHistory(): Promise<PatientAssessmentRecord[]>
   const db = await SQLite.openDatabaseAsync('symptomcheck.db');
   const rows = await db.getAllAsync<any>('SELECT * FROM patient_history ORDER BY date DESC');
   
-  return rows.map(row => ({
-    id: row.id,
-    date: row.date,
-    symptoms: JSON.parse(row.symptoms),
-    triage: row.triage,
-    advice: row.advice,
-    audit: row.audit
-  }));
+  return rows.map(row => {
+    let triageResultObj: TriageResult | undefined;
+    let adviceStr = row.advice;
+    
+    try {
+      triageResultObj = JSON.parse(row.advice);
+      // If it parsed successfully, it's the new format
+      // We can synthesize a display string for legacy UI just in case
+      adviceStr = triageResultObj?.triageAdvice || triageResultObj?.selfCareAdvice || triageResultObj?.description || '';
+    } catch {
+      // It's the old legacy plain string
+    }
+
+    return {
+      id: row.id,
+      date: row.date,
+      symptoms: JSON.parse(row.symptoms),
+      triage: row.triage,
+      advice: adviceStr,
+      triageResult: triageResultObj,
+      audit: row.audit
+    };
+  });
 }
 
 export async function clearAssessmentHistory(): Promise<void> {
