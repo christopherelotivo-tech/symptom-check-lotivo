@@ -70,7 +70,7 @@ export default function BottomNav<T extends string>({
   badgeCounts,
 }: BottomNavProps<T>) {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <View style={styles.container}>
         {tabs.map((tab) => (
           <AnimatedTab
@@ -88,14 +88,11 @@ export default function BottomNav<T extends string>({
 
 const styles = StyleSheet.create({
   safeArea: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 24 : 16,
-    left: 0,
-    right: 0,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
-    pointerEvents: 'box-none',
+    paddingBottom: Platform.OS === 'android' ? 8 : 0,
+    paddingTop: 8,
   },
   container: {
     flexDirection: 'row',

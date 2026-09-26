@@ -80,7 +80,7 @@ export default function AdminSettings({ onImportSuccess }: AdminSettingsProps) {
 
   if (activeView === 'MENU') {
     return (
-      <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: SPACING.xxxl }} showsVerticalScrollIndicator={false}>
         <Text style={styles.pageTitle}>Settings</Text>
         <Text style={styles.pageSubtitle}>Manage your system configuration.</Text>
 
@@ -120,7 +120,7 @@ export default function AdminSettings({ onImportSuccess }: AdminSettingsProps) {
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: SPACING.xl, paddingBottom: SPACING.xxxl }} showsVerticalScrollIndicator={false}>
         <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.xl}}>
           <Pressable onPress={() => setActiveView('MENU')} style={{flexDirection: 'row', alignItems: 'center'}}>
              <Feather name="arrow-left" size={24} color={COLORS.brandNavy} />

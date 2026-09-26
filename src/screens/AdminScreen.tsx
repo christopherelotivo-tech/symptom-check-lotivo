@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.xl,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: SPACING.xl,
   },
   listHeaderRow: {
     flexDirection: 'column',
