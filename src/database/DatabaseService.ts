@@ -90,19 +90,12 @@ async function seedSystemRules(database: SQLite.SQLiteDatabase): Promise<void> {
 
   console.log('[DatabaseService] Seeding system_rules from seedRules.json…');
 
-  const statement = await database.prepareAsync(
-    'INSERT INTO system_rules (id, rule_json) VALUES ($id, $rule_json)'
-  );
-
-  try {
-    for (const rule of seedRules as Rule[]) {
-      await statement.executeAsync({
-        $id: rule.id,
-        $rule_json: JSON.stringify(rule),
-      });
-    }
-  } finally {
-    await statement.finalizeAsync();
+  for (const rule of seedRules as Rule[]) {
+    await database.runAsync(
+      'INSERT INTO system_rules (id, rule_json) VALUES (?, ?)',
+      rule.id,
+      JSON.stringify(rule)
+    );
   }
 
   console.log(`[DatabaseService] Seeded ${seedRules.length} system rule(s).`);
