@@ -27,9 +27,10 @@ import PrimaryButton from '../components/ui/PrimaryButton';
 interface WelcomeScreenProps {
   onSelectMode: (mode: 'USER' | 'ADMIN') => void;
   onAboutPress: () => void;
+  onShowHistory?: () => void;
 }
 
-export default function WelcomeScreen({ onSelectMode, onAboutPress }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onSelectMode, onAboutPress, onShowHistory }: WelcomeScreenProps) {
   const [showPinAuth, setShowPinAuth] = useState(false);
   const [pin, setPin]                 = useState('');
   const [error, setError]             = useState(false);
@@ -265,10 +266,30 @@ export default function WelcomeScreen({ onSelectMode, onAboutPress }: WelcomeScr
                   <PrimaryButton
                     label="Start symptom assessment"
                     onPress={() => onSelectMode('USER')}
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', marginBottom: SPACING.md }}
                     buttonStyle={{ backgroundColor: '#FFFFFF', shadowColor: '#000000', shadowOpacity: 0.15, minHeight: 56 }}
                     textStyle={{ color: '#064E3B', fontWeight: '900', fontSize: 16 }}
                   />
+                  
+                  {onShowHistory && (
+                    <Pressable
+                      onPress={onShowHistory}
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.15)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.3)',
+                        borderRadius: RADIUS.lg,
+                        paddingVertical: 14,
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        width: '100%'
+                      }}
+                    >
+                      <Feather name="clock" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>My History</Text>
+                    </Pressable>
+                  )}
                 </Animated.View>
               </Animated.View>
             </View>

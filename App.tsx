@@ -66,58 +66,9 @@ function AboutModal({ visible, onClose }: { visible: boolean; onClose: () => voi
   );
 }
 
-// ---------------------------------------------------------------------------
-// History Sheet — shown when user taps "View History" in results
-// ---------------------------------------------------------------------------
-export function HistoryModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [history, setHistory] = useState<PatientAssessmentRecord[]>([]);
+// Old HistoryModal removed in favor of PatientHistoryScreen
 
-  useEffect(() => {
-    if (visible) {
-      getAssessmentHistory().then(setHistory).catch(console.error);
-    }
-  }, [visible]);
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={modalStyles.backdrop} onPress={onClose} />
-      <View style={[modalStyles.sheet, { maxHeight: '85%' }]}>
-        <View style={modalStyles.handle} />
-        <Text style={modalStyles.title}>Assessment History</Text>
-        <FlatList
-          data={history}
-          keyExtractor={item => item.id}
-          style={{ marginTop: SPACING.md }}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', padding: SPACING.xxl }}>
-              <Feather name="clock" size={40} color={COLORS.borderLight} />
-              <Text style={{ color: COLORS.textMuted, marginTop: SPACING.md }}>No past assessments yet.</Text>
-            </View>
-          }
-          renderItem={({ item }) => {
-            const riskColor = item.triage === 'Red' ? COLORS.triageRedIcon
-              : item.triage === 'Amber' ? COLORS.triageAmberIcon
-              : COLORS.triageGreenIcon;
-            return (
-              <View style={historyStyles.card}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: SPACING.xs }}>
-                  <Text style={{ fontWeight: '700', color: COLORS.brandNavy }}>
-                    {new Date(item.date).toLocaleDateString()}
-                  </Text>
-                  <Text style={{ fontWeight: '700', color: riskColor }}>{item.triage} Risk</Text>
-                </View>
-                <Text style={{ color: COLORS.textSecondary, lineHeight: 20 }} numberOfLines={2}>{item.advice}</Text>
-              </View>
-            );
-          }}
-        />
-        <Pressable style={modalStyles.closeBtn} onPress={onClose}>
-          <Text style={modalStyles.closeBtnText}>Close</Text>
-        </Pressable>
-      </View>
-    </Modal>
-  );
-}
+import PatientHistoryScreen from './src/screens/PatientHistoryScreen';
 
 // ---------------------------------------------------------------------------
 // Patient Zone — no tabs, just welcome → assessment
@@ -130,9 +81,10 @@ function PatientZone({ onSwitchToAdmin }: { onSwitchToAdmin: () => void }) {
   return (
     <View style={styles.zoneContainer}>
       <AboutModal visible={showAbout} onClose={() => setShowAbout(false)} />
-      <HistoryModal visible={showHistory} onClose={() => setShowHistory(false)} />
 
-      {isAssessing ? (
+      {showHistory ? (
+        <PatientHistoryScreen onBack={() => setShowHistory(false)} />
+      ) : isAssessing ? (
         <UserAssessmentScreen 
           onSwitchToWelcome={() => setIsAssessing(false)} 
           onShowHistory={() => setShowHistory(true)}
@@ -144,6 +96,7 @@ function PatientZone({ onSwitchToAdmin }: { onSwitchToAdmin: () => void }) {
             if (mode === 'ADMIN') onSwitchToAdmin();
           }}
           onAboutPress={() => setShowAbout(true)}
+          onShowHistory={() => setShowHistory(true)}
         />
       )}
     </View>
