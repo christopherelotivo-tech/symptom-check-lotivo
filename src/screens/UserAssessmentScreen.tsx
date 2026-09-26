@@ -360,7 +360,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
               <View 
                 style={{ backgroundColor: 'transparent', paddingHorizontal: SPACING.xl, paddingTop: insets.top + SPACING.sm, paddingBottom: SPACING.md }}
               >
-                {/* Top Row: Titles (Left) + Home Button (Right) */}
+                {/* Top Row: Titles (Left) + Actions (Right) */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ alignItems: 'flex-start' }}>
                     <Text style={{ fontSize: 24, fontWeight: '900', color: COLORS.brandNavy, letterSpacing: -0.5 }}>
@@ -371,9 +371,14 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
                     </Text>
                   </View>
 
-                  <Pressable onPress={onSwitchToWelcome} style={{ padding: SPACING.sm, marginRight: -SPACING.sm }}>
-                    <Feather name="home" size={24} color={COLORS.brandNavy} />
-                  </Pressable>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                    <Pressable onPress={handleResetAssessment} style={{ padding: SPACING.sm }}>
+                      <Feather name="home" size={24} color={COLORS.brandNavy} />
+                    </Pressable>
+                    <Pressable onPress={onSwitchToWelcome} style={{ padding: SPACING.sm, marginRight: -SPACING.sm }}>
+                      <Feather name="settings" size={24} color={COLORS.textMuted} />
+                    </Pressable>
+                  </View>
                 </View>
               </View>
 
@@ -423,7 +428,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
               <View 
                 style={{ backgroundColor: 'transparent', paddingHorizontal: SPACING.xl, paddingTop: insets.top + SPACING.sm, paddingBottom: SPACING.md }}
               >
-                {/* Top Row: Back (Left) + Titles (Center/Left) + Home (Right) */}
+                {/* Top Row: Back (Left) + Titles (Center/Left) + Actions (Right) */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Pressable onPress={handlePrevStep} style={{ padding: SPACING.sm, marginLeft: -SPACING.sm, marginRight: SPACING.sm }}>
@@ -440,9 +445,14 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
                     </View>
                   </View>
 
-                  <Pressable onPress={onSwitchToWelcome} style={{ padding: SPACING.sm, marginRight: -SPACING.sm }}>
-                    <Feather name="home" size={24} color={COLORS.brandNavy} />
-                  </Pressable>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                    <Pressable onPress={handleResetAssessment} style={{ padding: SPACING.sm }}>
+                      <Feather name="home" size={24} color={COLORS.brandNavy} />
+                    </Pressable>
+                    <Pressable onPress={onSwitchToWelcome} style={{ padding: SPACING.sm, marginRight: -SPACING.sm }}>
+                      <Feather name="settings" size={24} color={COLORS.textMuted} />
+                    </Pressable>
+                  </View>
                 </View>
               </View>
 
@@ -496,7 +506,7 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
             rules={rules}
             onStartNew={handleResetAssessment}
             onShowHistory={onShowHistory}
-            onClose={onSwitchToWelcome}
+            onClose={handleResetAssessment}
           />
         )}
       </View>

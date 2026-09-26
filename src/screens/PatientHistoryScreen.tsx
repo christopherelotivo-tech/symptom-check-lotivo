@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, Share, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
@@ -18,7 +18,12 @@ export default function PatientHistoryScreen({ onBack }: PatientHistoryScreenPro
 
   useEffect(() => {
     loadHistory();
-  }, []);
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      onBack();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [onBack]);
 
   const loadHistory = async () => {
     setIsLoading(true);
