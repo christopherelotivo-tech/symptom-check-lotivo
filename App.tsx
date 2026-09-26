@@ -37,8 +37,11 @@ function AboutModal({ visible, onClose }: { visible: boolean; onClose: () => voi
       <View style={modalStyles.sheet}>
         <View style={modalStyles.handle} />
         <Text style={modalStyles.title}>About SymptaCare</Text>
+        <Text style={[modalStyles.sub, { marginBottom: SPACING.md }]}>
+          SymptaCare is an easy-to-use mobile health companion that helps you evaluate your symptoms and understand what steps to take next—anytime, anywhere, even without an internet connection.
+        </Text>
         <Text style={modalStyles.sub}>
-          SymptaCare is an offline clinical symptom triage tool. It does not replace professional medical advice.
+          Whenever you or a family member feel unwell, SymptaCare guides you through a quick self-assessment so you can make informed decisions about your health in seconds.
         </Text>
 
         <View style={modalStyles.featureRow}>
