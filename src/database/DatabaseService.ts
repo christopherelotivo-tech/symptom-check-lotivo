@@ -8,7 +8,7 @@ let db: SQLite.SQLiteDatabase | null = null;
 /**
  * Opens (or reuses) the database connection and returns it.
  */
-async function getDb(): Promise<SQLite.SQLiteDatabase> {
+export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
     db = await SQLite.openDatabaseAsync('symptomcheck.db');
   }

@@ -27,6 +27,7 @@ import {
   WorkingMemory,
 } from '../engine/types';
 import { initDatabase, loadUnifiedRules } from '../database/DatabaseService';
+import { saveAssessmentHistory } from '../services/HistoryService';
 // ─────────────────────────────────────────────────────────────────────────────
 
 import SymptomForm, { SYMPTOM_CATEGORIES } from '../components/SymptomForm';
@@ -223,10 +224,8 @@ export default function UserAssessmentScreen({ onSwitchToWelcome, onShowHistory 
       
       // Save history
       if (triage) {
-        import('../services/HistoryService').then(({ saveAssessmentHistory }) => {
-          const symptomsList = Object.keys(nextMemory).filter(k => nextMemory[k].value === true);
-          saveAssessmentHistory(symptomsList, triage, result.auditTrail);
-        });
+        const symptomsList = Object.keys(nextMemory).filter(k => nextMemory[k].value === true);
+        saveAssessmentHistory(symptomsList, triage, result.auditTrail);
       }
     },
     []
