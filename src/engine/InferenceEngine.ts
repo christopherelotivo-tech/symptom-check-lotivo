@@ -110,22 +110,36 @@ export class InferenceEngine {
   }
 
   /**
-   * Checks if all rule conditions are satisfied against the Working Memory.
+   * Checks if rule conditions are satisfied against the Working Memory.
+   * IMPLEMENTS SMART PARTIAL MATCHING:
+   * - Rules with 1 or 2 symptoms require 100% exact match.
+   * - Rules with 3 or more symptoms require only a 66% match (e.g. 2 out of 3).
+   * This makes the offline engine more robust to incomplete user inputs.
    */
   private checkAntecedents(antecedents: RuleCondition[], memory: WorkingMemory): boolean {
-    return antecedents.every(condition => {
-      // Default missing facts to false
+    if (!antecedents || antecedents.length === 0) return false;
+
+    let matchCount = 0;
+    
+    for (const condition of antecedents) {
       const factState = memory[condition.fact] || { value: false, weight: 0 };
       const factValue = factState.value;
 
       if (condition.operator === 'EQUALS') {
-        return factValue === condition.value;
+        if (factValue === condition.value) matchCount++;
       } else if (condition.operator === 'NOT_EQUALS') {
-        return factValue !== condition.value;
+        if (factValue !== condition.value) matchCount++;
       }
+    }
 
-      return false;
-    });
+    let requiredMatches = antecedents.length;
+    
+    // Partial Match Logic for Complex Rules
+    if (antecedents.length >= 3) {
+      requiredMatches = Math.ceil(antecedents.length * 0.66);
+    }
+
+    return matchCount >= requiredMatches;
   }
 
   /**
