@@ -111,35 +111,55 @@ export class InferenceEngine {
 
   /**
    * Checks if rule conditions are satisfied against the Working Memory.
-   * IMPLEMENTS SMART PARTIAL MATCHING:
-   * - Rules with 1 or 2 symptoms require 100% exact match.
-   * - Rules with 3 or more symptoms require only a 66% match (e.g. 2 out of 3).
-   * This makes the offline engine more robust to incomplete user inputs.
+   * IMPLEMENTS REFINED SMART PARTIAL MATCHING:
+   * - Rules with 1 or 2 positive symptoms require 100% exact match.
+   * - Rules with 3 or more positive symptoms require only a 66% match.
+   * - Negative/Exclusion conditions MUST always be strictly met.
    */
   private checkAntecedents(antecedents: RuleCondition[], memory: WorkingMemory): boolean {
     if (!antecedents || antecedents.length === 0) return false;
 
-    let matchCount = 0;
+    let positiveConditions = 0;
+    let positiveMatches = 0;
+    let exclusionsSatisfied = true;
     
     for (const condition of antecedents) {
       const factState = memory[condition.fact] || { value: false, weight: 0 };
       const factValue = factState.value;
 
-      if (condition.operator === 'EQUALS') {
-        if (factValue === condition.value) matchCount++;
-      } else if (condition.operator === 'NOT_EQUALS') {
-        if (factValue !== condition.value) matchCount++;
+      const isExpectedTrue = 
+        (condition.operator === 'EQUALS' && condition.value === true) || 
+        (condition.operator === 'NOT_EQUALS' && condition.value === false);
+
+      if (isExpectedTrue) {
+        positiveConditions++;
+        if (factValue === true) positiveMatches++;
+      } else {
+        // It's an exclusion condition (expected false)
+        const conditionMet = 
+          (condition.operator === 'EQUALS' && factValue === condition.value) ||
+          (condition.operator === 'NOT_EQUALS' && factValue !== condition.value);
+        
+        if (!conditionMet) {
+          exclusionsSatisfied = false;
+        }
       }
     }
 
-    let requiredMatches = antecedents.length;
+    // Fail immediately if an exclusion is violated (e.g. requires fever=false but user has fever)
+    if (!exclusionsSatisfied) return false;
+
+    // Fail if there are no positive conditions to match against
+    if (positiveConditions === 0) return false;
+
+    let requiredPositiveMatches = positiveConditions;
     
     // Partial Match Logic for Complex Rules
-    if (antecedents.length >= 3) {
-      requiredMatches = Math.ceil(antecedents.length * 0.66);
+    if (positiveConditions >= 3) {
+      requiredPositiveMatches = Math.ceil(positiveConditions * 0.66);
     }
 
-    return matchCount >= requiredMatches;
+    return positiveMatches >= requiredPositiveMatches;
   }
 
   /**
